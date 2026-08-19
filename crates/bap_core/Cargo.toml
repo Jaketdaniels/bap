@@ -1,0 +1,13 @@
+[package]
+name = "bap_core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+bap_metrics = { path = "../bap_metrics" }
+bap_ops = { path = "../bap_ops" }
+deno_core.workspace = true
+serde_json.workspace = true
+serde_v8.workspace = true
