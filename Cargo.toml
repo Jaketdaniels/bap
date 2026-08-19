@@ -17,8 +17,8 @@ repository = "https://github.com/sirwillchris/kyx-link-generator"
 [workspace.dependencies]
 deno_core = { version = "0.410", features = ["include_icu_data"] }
 deno_ops = "0.286"
+deno_error = { version = "=0.7.1", features = ["serde_json", "serde", "url", "tokio"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_v8 = "0.319"
 tracing = "0.1"
-anyhow = "1"

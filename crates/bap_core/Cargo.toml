@@ -11,3 +11,6 @@ bap_ops = { path = "../bap_ops" }
 deno_core.workspace = true
 serde_json.workspace = true
 serde_v8.workspace = true
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt"] }

@@ -1,17 +1,20 @@
 #![forbid(unsafe_code)]
 
 mod console;
-pub use console::{op_console_error, op_console_log, op_console_warn};
+pub use console::{op_bap_args, op_console_error, op_console_log, op_console_warn};
 
 use bap_metrics::MetricsCollector;
 use deno_core::extension;
 
 extension!(
     bap,
-    ops = [op_console_log, op_console_error, op_console_warn],
+    ops = [op_console_log, op_console_error, op_console_warn, op_bap_args],
     js = [dir "src/js", "console.js"],
-    options = { metrics: MetricsCollector },
-    state = |state, config| state.put(config.metrics),
+    options = { metrics: MetricsCollector, args: Vec<String> },
+    state = |state, config| {
+        state.put(config.metrics);
+        state.put(config.args);
+    },
     docs = "Bap builtin ops"
 );
 
@@ -23,9 +26,10 @@ mod tests {
 
     fn eval_with_ext(
         metrics: &MetricsCollector,
+        args: Vec<String>,
         code: &str,
     ) -> Result<(), deno_core::error::AnyError> {
-        let extensions = vec![bap::init(metrics.clone())];
+        let extensions = vec![bap::init(metrics.clone(), args)];
         let mut runtime = JsRuntime::new(RuntimeOptions {
             extensions,
             ..Default::default()
@@ -39,6 +43,7 @@ mod tests {
         let metrics = MetricsCollector::new();
         eval_with_ext(
             &metrics,
+            Vec::new(),
             "Deno.core.ops.op_console_log('hello from bap\\n')",
         )
         .expect("eval console.log");
@@ -48,8 +53,23 @@ mod tests {
     #[test]
     fn op_error_records_metrics() {
         let metrics = MetricsCollector::new();
-        eval_with_ext(&metrics, "Deno.core.ops.op_console_error('boom\\n')")
-            .expect("eval console.error");
+        eval_with_ext(
+            &metrics,
+            Vec::new(),
+            "Deno.core.ops.op_console_error('boom\\n')",
+        )
+        .expect("eval console.error");
         assert_eq!(metrics.snapshot().ops["console.error"].calls, 1);
+    }
+
+    #[test]
+    fn op_bap_args_returns_config_args() {
+        let metrics = MetricsCollector::new();
+        eval_with_ext(
+            &metrics,
+            vec!["alpha".into(), "beta".into()],
+            "if (JSON.stringify(Deno.core.ops.op_bap_args()) !== '[\"alpha\",\"beta\"]') throw new Error('args mismatch')",
+        )
+        .expect("eval op_bap_args");
     }
 }

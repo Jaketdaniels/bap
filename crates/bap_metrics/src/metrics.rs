@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -20,7 +20,7 @@ pub struct HeapSample {
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct MetricsSnapshot {
     pub cold_start_ms: f64,
-    pub ops: HashMap<String, OpStat>,
+    pub ops: BTreeMap<String, OpStat>,
     pub heap_samples: Vec<HeapSample>,
 }
 
@@ -28,7 +28,7 @@ pub struct MetricsSnapshot {
 struct Shared {
     epoch: Instant,
     cold_start_ms: f64,
-    ops: HashMap<String, OpStat>,
+    ops: BTreeMap<String, OpStat>,
     heap_samples: Vec<HeapSample>,
 }
 
@@ -49,7 +49,7 @@ impl MetricsCollector {
             inner: Arc::new(Mutex::new(Shared {
                 epoch: Instant::now(),
                 cold_start_ms: 0.0,
-                ops: HashMap::new(),
+                ops: BTreeMap::new(),
                 heap_samples: Vec::new(),
             })),
         }

@@ -50,3 +50,21 @@ steady-state is ~5 ms, comfortably inside the Phase 6 spec ceiling of ≤8 ms.
   sorted pretty output, unify `bap:`/`repl error:` prefixes, deno_error pinned in workspace deps,
   op write-error surfacing (EPIPE), #[allow(dead_code)] metrics field on BapRuntime.
 - README phase count fixed to six.
+
+## 2026-08-19 — deferred items implemented (all review findings closed)
+
+- Script args passthrough: extension takes `args: Vec<String>`; new `op_bap_args` returns them;
+  `globalThis.Bap.args` frozen in console.js; `BapRuntime::with_args(metrics, args)`; run.rs threads them.
+- bap_core::Error newtype over AnyError with ErrorKind{Io,Load,Eval} and labeled Display (`load: ...`).
+  anyhow 1.0.104 dropped `impl std::error::Error for anyhow::Error` — source() routes through `AsRef<dyn StdError>`.
+- REPL banner and `~x.x ms` timing line are tty-gated; timing uses as_secs_f64 (no as_millis truncation).
+- is_complete now tokenizes: quoted strings, line/block comments, template literals with `${}` interpolation
+  depth; unterminated string/template/block-comment reports incomplete. Regex literals still counted by brace scan.
+- Metrics ops map swapped HashMap → BTreeMap: pretty and JSON output are key-sorted and deterministic.
+- Error prefix unified to `bap:` (was `repl error:`).
+- deno_error moved to workspace.dependencies; unused anyhow dropped from workspace.
+- Console emit() propagates write errors as JsErrorBox (EPIPE now surfaces instead of being swallowed).
+- Dead `metrics` field on BapRuntime removed (constructor param still feeds the extension + cold start).
+
+Verified: fmt/clippy(-D warnings)/test all green (17 unit + 8 integration); smoke checks for args passthrough,
+piped-REPL stdout purity, eval-error exit 1, sorted JSON keys.

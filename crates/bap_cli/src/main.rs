@@ -18,7 +18,7 @@ fn main() {
         cli::Command::Repl => match repl::run(cli.metrics, metrics) {
             Ok(()) => 0,
             Err(err) => {
-                eprintln!("repl error: {err}");
+                eprintln!("bap: {err}");
                 1
             }
         },

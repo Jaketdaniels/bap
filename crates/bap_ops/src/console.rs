@@ -6,29 +6,38 @@ use std::time::Instant;
 
 use std::io::Write;
 
-fn emit(state: &mut OpState, stream: &mut dyn Write, name: &str, msg: &str) {
+fn emit(
+    state: &mut OpState,
+    stream: &mut dyn Write,
+    name: &str,
+    msg: &str,
+) -> Result<(), JsErrorBox> {
     let started = Instant::now();
     let metrics = state.borrow::<MetricsCollector>();
-    let _ = stream.write_all(msg.as_bytes());
-    let _ = stream.flush();
+    let result = stream
+        .write_all(msg.as_bytes())
+        .and_then(|_| stream.flush());
     metrics.record_op(name, started.elapsed());
     tracing::debug!(target: "bap::ops", op = name, "console write");
+    result.map_err(|err| JsErrorBox::new("Error", format!("{name}: {err}")))
 }
 
 #[op2(fast)]
 pub fn op_console_log(state: &mut OpState, #[string] msg: String) -> Result<(), JsErrorBox> {
-    emit(state, &mut std::io::stdout(), "console.log", &msg);
-    Ok(())
+    emit(state, &mut std::io::stdout(), "console.log", &msg)
 }
 
 #[op2(fast)]
 pub fn op_console_error(state: &mut OpState, #[string] msg: String) -> Result<(), JsErrorBox> {
-    emit(state, &mut std::io::stderr(), "console.error", &msg);
-    Ok(())
+    emit(state, &mut std::io::stderr(), "console.error", &msg)
 }
 
 #[op2(fast)]
 pub fn op_console_warn(state: &mut OpState, #[string] msg: String) -> Result<(), JsErrorBox> {
-    emit(state, &mut std::io::stderr(), "console.warn", &msg);
-    Ok(())
+    emit(state, &mut std::io::stderr(), "console.warn", &msg)
+}
+
+#[op2]
+pub fn op_bap_args(state: &mut OpState) -> Vec<String> {
+    state.borrow::<Vec<String>>().clone()
 }

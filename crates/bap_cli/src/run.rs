@@ -4,7 +4,7 @@ use bap_metrics::{MetricsCollector, MetricsSnapshot};
 
 pub fn run_file(
     path: &str,
-    _script_args: Vec<String>,
+    script_args: Vec<String>,
     format: MetricsFormat,
     metrics: MetricsCollector,
 ) -> i32 {
@@ -13,7 +13,7 @@ pub fn run_file(
         .build()
         .expect("failed to build tokio runtime");
     let result = rt.block_on(async {
-        let mut runtime = BapRuntime::new(metrics.clone());
+        let mut runtime = BapRuntime::with_args(metrics.clone(), script_args);
         let result = runtime.run_script(path).await;
         let (used, total) = runtime.sample_heap();
         metrics.record_heap(used, total);

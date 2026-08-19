@@ -23,3 +23,7 @@ globalThis.console = {
   error: (...args) => Deno.core.ops.op_console_error(formatArgs(args) + "\n"),
   warn: (...args) => Deno.core.ops.op_console_warn(formatArgs(args) + "\n"),
 };
+
+globalThis.Bap = Object.freeze({
+  args: Deno.core.ops.op_bap_args(),
+});
