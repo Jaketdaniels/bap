@@ -1,6 +1,6 @@
 //! TCP ops backed by tokio, with sockets held in an OpState resource table.
 
-use bap_metrics::MetricsCollector;
+use super::metrics::{record_op, record_op_async};
 use deno_core::JsBuffer;
 use deno_core::OpState;
 use deno_core::op2;
@@ -68,13 +68,6 @@ fn net_err(err: std::io::Error) -> JsErrorBox {
     JsErrorBox::new("Error", format!("net: {err}"))
 }
 
-/// Records `name` duration against the collector held in `state`.
-fn record(state: &OpState, name: &str, started: Instant) {
-    state
-        .borrow::<MetricsCollector>()
-        .record_op(name, started.elapsed());
-}
-
 /// Binds a listener on `127.0.0.1`, resolving to `{id, port}`.
 #[op2(async(lazy), fast)]
 #[serde]
@@ -91,7 +84,7 @@ pub async fn op_net_listen(
         .borrow_mut()
         .borrow_mut::<NetState>()
         .add_listener(listener);
-    record(&state.borrow(), "net.listen", started);
+    record_op_async(&state.borrow(), "net.listen", started);
     Ok(ListenResult { id, port: bound })
 }
 
@@ -116,7 +109,7 @@ pub async fn op_net_accept(
     match accepted {
         Ok((stream, _)) => {
             let id = state.borrow_mut().borrow_mut::<NetState>().add_conn(stream);
-            record(&state.borrow(), "net.accept", started);
+            record_op_async(&state.borrow(), "net.accept", started);
             Ok(id)
         }
         Err(err) => Err(net_err(err)),
@@ -136,7 +129,7 @@ pub async fn op_net_connect(
         .await
         .map_err(net_err)?;
     let id = state.borrow_mut().borrow_mut::<NetState>().add_conn(stream);
-    record(&state.borrow(), "net.connect", started);
+    record_op_async(&state.borrow(), "net.connect", started);
     Ok(id)
 }
 
@@ -162,7 +155,7 @@ pub async fn op_net_read(
         .insert_conn(conn_id, stream);
     let n = read.map_err(net_err)?;
     buf.truncate(n);
-    record(&state.borrow(), "net.read", started);
+    record_op_async(&state.borrow(), "net.read", started);
     Ok(buf)
 }
 
@@ -186,7 +179,7 @@ pub async fn op_net_write(
         .borrow_mut::<NetState>()
         .insert_conn(conn_id, stream);
     let n = write.map_err(net_err)?;
-    record(&state.borrow(), "net.write", started);
+    record_op_async(&state.borrow(), "net.write", started);
     Ok(n)
 }
 
@@ -195,7 +188,7 @@ pub async fn op_net_write(
 pub fn op_net_close(state: &mut OpState, #[number] conn_id: u64) {
     let started = Instant::now();
     state.borrow_mut::<NetState>().conns.remove(&conn_id);
-    record(state, "net.close", started);
+    record_op(state, "net.close", started);
 }
 
 /// Closes a listener, dropping its socket.
@@ -206,7 +199,7 @@ pub fn op_net_close_listener(state: &mut OpState, #[number] listener_id: u64) {
         .borrow_mut::<NetState>()
         .listeners
         .remove(&listener_id);
-    record(state, "net.closeListener", started);
+    record_op(state, "net.closeListener", started);
 }
 
 fn unknown_conn() -> JsErrorBox {

@@ -1,3 +1,4 @@
+use hdrhistogram::Histogram;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -10,6 +11,10 @@ pub struct OpStat {
     pub calls: u64,
     pub total_ns: u128,
     pub max_ns: u128,
+    /// 50th percentile, present only for async ops.
+    pub p50_ns: Option<u128>,
+    /// 99th percentile, present only for async ops.
+    pub p99_ns: Option<u128>,
 }
 
 /// One heap measurement with an elapsed time from the collector epoch.
@@ -29,12 +34,16 @@ pub struct MetricsSnapshot {
     pub heap_samples: Vec<HeapSample>,
 }
 
+/// Upper bound for latency histograms, in microseconds (~16 minutes).
+const HISTOGRAM_MAX_US: u64 = 1_000_000_000;
+
 #[derive(Debug)]
 struct Shared {
     epoch: Instant,
     cold_start_ms: f64,
     ops: BTreeMap<String, OpStat>,
     heap_samples: Vec<HeapSample>,
+    histograms: BTreeMap<String, Histogram<u64>>,
 }
 
 /// Thread-safe metrics store shared through an `Arc<Mutex<_>>`.
@@ -66,6 +75,7 @@ impl MetricsCollector {
                 cold_start_ms: 0.0,
                 ops: BTreeMap::new(),
                 heap_samples: Vec::new(),
+                histograms: BTreeMap::new(),
             })),
         }
     }
@@ -86,6 +96,25 @@ impl MetricsCollector {
         stat.max_ns = stat.max_ns.max(ns);
     }
 
+    /// Records an async op call, additionally feeding a latency histogram
+    /// so snapshots can report p50/p99 percentiles for the name.
+    pub fn record_op_async(&self, name: &str, duration: Duration) {
+        let mut shared = self.lock();
+        let stat = shared.ops.entry(name.to_owned()).or_default();
+        stat.calls += 1;
+        let ns = duration.as_nanos();
+        stat.total_ns += ns;
+        stat.max_ns = stat.max_ns.max(ns);
+        let us = u64::try_from(duration.as_micros()).unwrap_or(u64::MAX);
+        shared
+            .histograms
+            .entry(name.to_owned())
+            .or_insert_with(|| {
+                Histogram::new_with_max(HISTOGRAM_MAX_US, 3_u8).expect("valid bounds")
+            })
+            .saturating_record(us);
+    }
+
     /// Appends a heap sample with the given byte counts.
     /// The sample's `elapsed_ms` is measured from the collector epoch.
     pub fn record_heap(&self, used_bytes: usize, total_bytes: usize) {
@@ -99,11 +128,19 @@ impl MetricsCollector {
     }
 
     /// Clones the current state into a `MetricsSnapshot`.
+    /// Async-op percentiles are computed from the live histograms.
     pub fn snapshot(&self) -> MetricsSnapshot {
         let shared = self.lock();
+        let mut ops = shared.ops.clone();
+        for (name, stat) in ops.iter_mut() {
+            if let Some(hist) = shared.histograms.get(name) {
+                stat.p50_ns = Some(hist.value_at_quantile(0.5) as u128 * 1_000);
+                stat.p99_ns = Some(hist.value_at_quantile(0.99) as u128 * 1_000);
+            }
+        }
         MetricsSnapshot {
             cold_start_ms: shared.cold_start_ms,
-            ops: shared.ops.clone(),
+            ops,
             heap_samples: shared.heap_samples.clone(),
         }
     }
@@ -123,7 +160,26 @@ mod tests {
         assert_eq!(op.calls, 2);
         assert_eq!(op.total_ns, 7_000_000);
         assert_eq!(op.max_ns, 5_000_000);
+        assert_eq!(op.p50_ns, None);
+        assert_eq!(op.p99_ns, None);
         assert!(snap.cold_start_ms >= 0.0);
+    }
+
+    #[test]
+    fn record_op_async_reports_percentiles() {
+        let collector = MetricsCollector::new();
+        for ms in [10, 20, 100, 200, 300] {
+            collector.record_op_async("net.read", Duration::from_millis(ms));
+        }
+        let snap = collector.snapshot();
+        let op = &snap.ops["net.read"];
+        assert_eq!(op.calls, 5);
+        assert_eq!(op.total_ns, 630_000_000);
+        assert_eq!(op.max_ns, 300_000_000);
+        let p50 = op.p50_ns.expect("p50 present");
+        let p99 = op.p99_ns.expect("p99 present");
+        assert!((99_000_000..=101_000_000).contains(&p50), "p50={p50}");
+        assert!((290_000_000..=310_000_000).contains(&p99), "p99={p99}");
     }
 
     #[test]

@@ -1,6 +1,6 @@
 //! File I/O ops backed by tokio::fs, exposed as JS promises.
 
-use bap_metrics::MetricsCollector;
+use super::metrics::record_op_async;
 use deno_core::JsBuffer;
 use deno_core::OpState;
 use deno_core::op2;
@@ -32,13 +32,6 @@ fn io_err(path: &str, err: std::io::Error) -> JsErrorBox {
     JsErrorBox::new("Error", format!("{path}: {err}"))
 }
 
-/// Records `name` duration against the collector held in `state`.
-fn record(state: &OpState, name: &str, started: Instant) {
-    state
-        .borrow::<MetricsCollector>()
-        .record_op(name, started.elapsed());
-}
-
 /// Reads a file's bytes, resolving to a `Uint8Array`.
 #[op2(async(lazy), fast)]
 #[buffer]
@@ -48,7 +41,7 @@ pub async fn op_fs_read_file(
 ) -> Result<Vec<u8>, JsErrorBox> {
     let started = Instant::now();
     let data = tokio::fs::read(&path).await.map_err(|e| io_err(&path, e))?;
-    record(&state.borrow(), "fs.readFile", started);
+    record_op_async(&state.borrow(), "fs.readFile", started);
     Ok(data)
 }
 
@@ -63,7 +56,7 @@ pub async fn op_fs_write_file(
     tokio::fs::write(&path, &data)
         .await
         .map_err(|e| io_err(&path, e))?;
-    record(&state.borrow(), "fs.writeFile", started);
+    record_op_async(&state.borrow(), "fs.writeFile", started);
     Ok(())
 }
 
@@ -87,7 +80,7 @@ pub async fn op_fs_read_dir(
             is_dir: ty.is_dir(),
         });
     }
-    record(&state.borrow(), "fs.readDir", started);
+    record_op_async(&state.borrow(), "fs.readDir", started);
     Ok(out)
 }
 
@@ -108,7 +101,7 @@ pub async fn op_fs_stat(
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
-    record(&state.borrow(), "fs.stat", started);
+    record_op_async(&state.borrow(), "fs.stat", started);
     Ok(FileStat {
         size: meta.len(),
         modified_ms,

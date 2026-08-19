@@ -43,8 +43,14 @@ pub fn report(format: MetricsFormat, snap: &MetricsSnapshot) {
             eprintln!("cold start: {:.3} ms", snap.cold_start_ms);
             eprintln!("heap samples: {}", snap.heap_samples.len());
             for (name, stat) in &snap.ops {
+                let tail = match (stat.p50_ns, stat.p99_ns) {
+                    (Some(p50), Some(p99)) => {
+                        format!(", {} us p50, {} us p99", p50 / 1_000, p99 / 1_000)
+                    }
+                    _ => String::new(),
+                };
                 eprintln!(
-                    "op {name}: {} calls, {} us total, {} us max",
+                    "op {name}: {} calls, {} us total, {} us max{tail}",
                     stat.calls,
                     stat.total_ns / 1_000,
                     stat.max_ns / 1_000

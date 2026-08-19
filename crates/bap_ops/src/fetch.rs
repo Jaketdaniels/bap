@@ -1,4 +1,4 @@
-use bap_metrics::MetricsCollector;
+use super::metrics::record_op_async;
 use deno_core::OpState;
 use deno_core::op2;
 use deno_error::JsErrorBox;
@@ -50,13 +50,6 @@ fn fetch_err(err: reqwest::Error) -> JsErrorBox {
     JsErrorBox::new("Error", format!("fetch: {err}"))
 }
 
-/// Records `name` duration against the collector held in `state`.
-fn record(state: &OpState, name: &str, started: Instant) {
-    state
-        .borrow::<MetricsCollector>()
-        .record_op(name, started.elapsed());
-}
-
 /// Sends a GET request, resolving to `{id, status, ok, headers}`.
 #[op2(async(lazy), fast)]
 #[serde]
@@ -84,7 +77,7 @@ pub async fn op_fetch(
         .collect();
     let body = response.bytes().await.map_err(fetch_err)?.to_vec();
     let id = state.borrow_mut().borrow_mut::<FetchState>().add_body(body);
-    record(&state.borrow(), "fetch.request", started);
+    record_op_async(&state.borrow(), "fetch.request", started);
     Ok(FetchResult {
         id,
         status,
@@ -102,6 +95,6 @@ pub async fn op_fetch_body(
 ) -> Result<Vec<u8>, JsErrorBox> {
     let started = Instant::now();
     let body = state.borrow_mut().borrow_mut::<FetchState>().take_body(id);
-    record(&state.borrow(), "fetch.body", started);
+    record_op_async(&state.borrow(), "fetch.body", started);
     body.ok_or_else(|| JsErrorBox::new("Error", "fetch: unknown body"))
 }

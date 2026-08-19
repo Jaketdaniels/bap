@@ -78,6 +78,8 @@ async fn tcp_echo_round_trip() {
     assert_eq!(snap.ops["net.listen"].calls, 1);
     assert_eq!(snap.ops["net.accept"].calls, 1);
     assert_eq!(snap.ops["net.connect"].calls, 1);
+    assert!(snap.ops["net.listen"].p50_ns.is_some());
+    assert!(snap.ops["net.listen"].p99_ns.is_some());
 }
 
 #[tokio::test]

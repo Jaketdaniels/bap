@@ -5,6 +5,7 @@
 mod console;
 mod fetch;
 mod fs;
+mod metrics;
 mod net;
 mod timers;
 pub use console::{op_bap_args, op_console_error, op_console_log, op_console_warn};

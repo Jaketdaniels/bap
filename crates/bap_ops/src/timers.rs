@@ -1,6 +1,6 @@
 //! Timer ops backed by tokio, surfaced to JS as promises.
 
-use bap_metrics::MetricsCollector;
+use super::metrics::{record_op, record_op_async};
 use deno_core::OpState;
 use deno_core::op2;
 use deno_error::JsErrorBox;
@@ -30,9 +30,7 @@ impl TimerState {
 pub fn op_timer_create(state: &mut OpState) -> u64 {
     let started = Instant::now();
     let id = state.borrow_mut::<TimerState>().allocate_id();
-    state
-        .borrow::<MetricsCollector>()
-        .record_op("timers.create", started.elapsed());
+    record_op(state, "timers.create", started);
     id
 }
 
@@ -41,9 +39,7 @@ pub fn op_timer_create(state: &mut OpState) -> u64 {
 pub fn op_timer_clear(state: &mut OpState, #[number] id: u64) {
     let started = Instant::now();
     state.borrow_mut::<TimerState>().cancelled.insert(id);
-    state
-        .borrow::<MetricsCollector>()
-        .record_op("timers.clear", started.elapsed());
+    record_op(state, "timers.clear", started);
 }
 
 /// Sleeps `delay_ms`, then reports whether the timer is still armed.
@@ -60,9 +56,6 @@ pub async fn op_timer_set_timeout(
         .borrow::<TimerState>()
         .cancelled
         .contains(&id);
-    state
-        .borrow()
-        .borrow::<MetricsCollector>()
-        .record_op("timers.setTimeout", started.elapsed());
+    record_op_async(&state.borrow(), "timers.setTimeout", started);
     Ok(armed)
 }
