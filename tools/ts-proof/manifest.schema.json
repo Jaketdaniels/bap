@@ -67,6 +67,12 @@
       }
     },
     "failure": {
+      "oneOf": [
+        { "$ref": "#/$defs/editLimitFailure" },
+        { "$ref": "#/$defs/unsafeMutationFailure" }
+      ]
+    },
+    "editLimitFailure": {
       "type": "object",
       "additionalProperties": false,
       "required": ["code", "message", "limit", "eligibleEdits"],
@@ -75,6 +81,20 @@
         "message": { "type": "string" },
         "limit": { "const": 1024 },
         "eligibleEdits": { "type": "integer", "minimum": 1025 }
+      }
+    },
+    "unsafeMutationFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "specifier", "start", "end", "line", "column"],
+      "properties": {
+        "code": { "const": "BAP_PROOF_UNSAFE_MUTATION" },
+        "message": { "type": "string" },
+        "specifier": { "type": "string", "format": "uri" },
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 },
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 }
       }
     },
     "evidence": {

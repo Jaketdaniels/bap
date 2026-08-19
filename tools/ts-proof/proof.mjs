@@ -23,6 +23,7 @@ const PROTOCOL_VERSION = 1;
 const MAX_DEPTH = 64;
 const MAX_EVIDENCE_NODES = 256;
 const MAX_PROOFS = 1024;
+const DYNAMIC_GLOBALS = new Set(["Function", "eval", "global", "globalThis", "self", "window"]);
 const AMBIENT_SPECIFIER = "bap:units.d.ts";
 const AMBIENT_FILE = fileURLToPath(new URL("./bap-units.d.ts", import.meta.url));
 const AMBIENT_SOURCE = await readFile(AMBIENT_FILE, "utf8");
@@ -170,22 +171,39 @@ function isDirectTrustedCall(node) {
     && !call.questionDotToken;
 }
 
-function hasUnsafeBapNumericAccess(sourceFile, checker, ambientFile, project) {
-  let unsafe = false;
+function findUnsafeProofCapability(sourceFile, checker, ambientFile, project) {
+  let unsafeNode;
   const visit = (node) => {
-    if (unsafe) return;
+    if (unsafeNode) return;
+    if (isIdentifier(node) && DYNAMIC_GLOBALS.has(node.text)) {
+      unsafeNode = node;
+      return;
+    }
     if (isAmbientBapIdentifier(node, checker, ambientFile, project)) {
       const numericAccess = node.parent;
       if (!isBapNumericAccess(numericAccess, checker, ambientFile, project)
           || !isDirectTrustedCall(numericAccess)) {
-        unsafe = true;
+        unsafeNode = node;
         return;
       }
     }
     node.forEachChild(visit);
   };
   sourceFile.forEachChild(visit);
-  return unsafe;
+  return unsafeNode;
+}
+
+function unsafeMutationFailure(source, node, sourceFile, specifier) {
+  const range = byteRange(source, node, sourceFile);
+  const location = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+  return {
+    code: "BAP_PROOF_UNSAFE_MUTATION",
+    message: "proof request contains dynamic or escaped access that can mutate Bap",
+    specifier,
+    ...range,
+    line: location.line + 1,
+    column: location.character + 1,
+  };
 }
 
 function trustedHelper(node, checker, ambientFile, project) {
@@ -383,8 +401,12 @@ export async function prove(source, options = {}) {
       diagnostics,
       proofs: [],
     };
+    const unsafeNode = findUnsafeProofCapability(sourceFile, checker, ambientFile, project);
+    if (unsafeNode) {
+      manifest.failure = unsafeMutationFailure(source, unsafeNode, sourceFile, specifier);
+      return manifest;
+    }
     if (diagnostics.some(({ category }) => category === "error")) return manifest;
-    if (hasUnsafeBapNumericAccess(sourceFile, checker, ambientFile, project)) return manifest;
 
     const declarations = new Map();
     const candidates = [];

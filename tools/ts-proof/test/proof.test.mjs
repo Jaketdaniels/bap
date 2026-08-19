@@ -20,6 +20,15 @@ function sourceWith(expression, prefix = "") {
   return `${prefix}export const result = ${expression};\n`;
 }
 
+function assertUnsafeFailure(result, source, token) {
+  assert.deepEqual(result.proofs, []);
+  assert.equal(result.failure.code, "BAP_PROOF_UNSAFE_MUTATION");
+  assert.equal(result.failure.specifier, "file:///entry.ts");
+  assert.equal(Buffer.from(source).subarray(result.failure.start, result.failure.end).toString(), token);
+  assert.ok(result.failure.line >= 1);
+  assert.ok(result.failure.column >= 1);
+}
+
 test("emits protocol v1 metadata and closed evidence", async () => {
   const source = sourceWith('Bap.numeric.unitAdd(Bap.numeric.unit("metre", 2), Bap.numeric.unit("metre", 3))');
   const result = await prove(source, { specifier: "file:///workspace/../entry.ts" });
@@ -136,7 +145,39 @@ test("shuns trusted helpers after type-error-free reassignment", async () => {
   const result = await prove(source);
 
   assert.deepEqual(result.diagnostics, []);
-  assert.deepEqual(result.proofs, []);
+  assertUnsafeFailure(result, source, "Bap");
+});
+
+test("rejects dynamic and global mutation capabilities", async () => {
+  const cases = [
+    {
+      token: "globalThis",
+      prefix: "(globalThis as any).Bap.numeric.unit = (_name: string, value: number) => value;\n",
+    },
+    {
+      token: "eval",
+      prefix: "eval('Bap.numeric.unit = (_name, value) => value');\n",
+    },
+    {
+      token: "Function",
+      prefix: "Function('Bap.numeric.unit = (_name, value) => value')();\n",
+    },
+    {
+      token: "globalThis",
+      prefix: [
+        "const root: any = globalThis;",
+        "root.Bap.numeric.unit = (_name: string, value: number) => value;",
+        "",
+      ].join("\n"),
+    },
+  ];
+
+  for (const { prefix, token } of cases) {
+    const source = sourceWith('Bap.numeric.unit("metre", 2)', prefix);
+    const result = await prove(source);
+    assert.deepEqual(result.diagnostics, []);
+    assertUnsafeFailure(result, source, token);
+  }
 });
 
 test("shuns trusted helpers after reassignment through an escaped alias", async () => {
@@ -149,7 +190,7 @@ test("shuns trusted helpers after reassignment through an escaped alias", async 
   const result = await prove(source);
 
   assert.deepEqual(result.diagnostics, []);
-  assert.deepEqual(result.proofs, []);
+  assertUnsafeFailure(result, source, "Bap");
 });
 
 test("shuns optional access to trusted helpers", async () => {
@@ -242,6 +283,7 @@ test("ships a schema that requires the protocol contract", async () => {
   ]);
   assert.deepEqual(schema.properties.proofs.maxItems, 1024);
   assert.equal(schema.properties.failure.$ref, "#/$defs/failure");
+  assert.equal(schema.$defs.unsafeMutationFailure.properties.code.const, "BAP_PROOF_UNSAFE_MUTATION");
   assert.ok(schema.$defs.evidence.properties.kind.enum.includes("unit.add"));
 });
 
