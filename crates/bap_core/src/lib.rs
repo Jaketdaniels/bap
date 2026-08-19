@@ -57,7 +57,7 @@ mod tests {
     }
 
     #[test]
-    fn console_log_flows_to_stdout_and_metrics() {
+    fn console_log_records_metrics() {
         let metrics = MetricsCollector::new();
         let mut runtime = BapRuntime::new(metrics.clone());
         runtime.eval("console.log('hello', 42)").unwrap();
