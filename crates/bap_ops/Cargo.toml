@@ -10,6 +10,7 @@ bap_metrics = { path = "../bap_metrics" }
 deno_core.workspace = true
 deno_ops.workspace = true
 deno_error.workspace = true
+reqwest.workspace = true
 serde.workspace = true
 tokio.workspace = true
 tracing.workspace = true

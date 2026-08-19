@@ -3,10 +3,12 @@
 #![forbid(unsafe_code)]
 
 mod console;
+mod fetch;
 mod fs;
 mod net;
 mod timers;
 pub use console::{op_bap_args, op_console_error, op_console_log, op_console_warn};
+pub use fetch::{FetchState, op_fetch, op_fetch_body};
 pub use fs::{op_fs_read_dir, op_fs_read_file, op_fs_stat, op_fs_write_file};
 pub use net::{
     op_net_accept, op_net_close, op_net_close_listener, op_net_connect, op_net_listen, op_net_read,
@@ -37,7 +39,9 @@ extension!(
         op_net_read,
         op_net_write,
         op_net_close,
-        op_net_close_listener
+        op_net_close_listener,
+        op_fetch,
+        op_fetch_body
     ],
     js = [dir "src/js", "console.js", "runtime.js"],
     options = { metrics: MetricsCollector, args: Vec<String> },
@@ -46,6 +50,7 @@ extension!(
         state.put(config.args);
         state.put(timers::TimerState::default());
         state.put(net::NetState::default());
+        state.put(fetch::FetchState::default());
     },
     docs = "Bap builtin ops"
 );

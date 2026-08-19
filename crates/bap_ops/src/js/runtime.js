@@ -73,6 +73,17 @@ bap.write = (connId, data) =>
   );
 bap.close = (connId) => Deno.core.ops.op_net_close(connId);
 bap.closeListener = (listenerId) => Deno.core.ops.op_net_close_listener(listenerId);
+bap.fetch = async (url) => {
+  const meta = await Deno.core.ops.op_fetch(String(url));
+  const body = await Deno.core.ops.op_fetch_body(meta.id);
+  return {
+    status: meta.status,
+    ok: meta.ok,
+    headers: Object.fromEntries(meta.headers),
+    text: () => decodeUtf8(body),
+    arrayBuffer: () => body,
+  };
+};
 
 globalThis.bap = Object.freeze(bap);
 globalThis.setTimeout = setTimeout;
