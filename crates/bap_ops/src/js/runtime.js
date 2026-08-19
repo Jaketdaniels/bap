@@ -62,6 +62,17 @@ bap.writeFile = (path, data) =>
   );
 bap.readDir = (path) => Deno.core.ops.op_fs_read_dir(String(path));
 bap.stat = (path) => Deno.core.ops.op_fs_stat(String(path));
+bap.listen = (port) => Deno.core.ops.op_net_listen(port);
+bap.accept = (listenerId) => Deno.core.ops.op_net_accept(listenerId);
+bap.connect = (host, port) => Deno.core.ops.op_net_connect(String(host), port);
+bap.read = (connId) => Deno.core.ops.op_net_read(connId);
+bap.write = (connId, data) =>
+  Deno.core.ops.op_net_write(
+    connId,
+    typeof data === "string" ? encodeUtf8(data) : data,
+  );
+bap.close = (connId) => Deno.core.ops.op_net_close(connId);
+bap.closeListener = (listenerId) => Deno.core.ops.op_net_close_listener(listenerId);
 
 globalThis.bap = Object.freeze(bap);
 globalThis.setTimeout = setTimeout;

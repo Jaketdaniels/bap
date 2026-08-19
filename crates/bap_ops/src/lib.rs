@@ -4,9 +4,14 @@
 
 mod console;
 mod fs;
+mod net;
 mod timers;
 pub use console::{op_bap_args, op_console_error, op_console_log, op_console_warn};
 pub use fs::{op_fs_read_dir, op_fs_read_file, op_fs_stat, op_fs_write_file};
+pub use net::{
+    op_net_accept, op_net_close, op_net_close_listener, op_net_connect, op_net_listen, op_net_read,
+    op_net_write,
+};
 pub use timers::{op_timer_clear, op_timer_create, op_timer_set_timeout};
 
 use bap_metrics::MetricsCollector;
@@ -25,7 +30,14 @@ extension!(
         op_fs_read_file,
         op_fs_write_file,
         op_fs_read_dir,
-        op_fs_stat
+        op_fs_stat,
+        op_net_listen,
+        op_net_accept,
+        op_net_connect,
+        op_net_read,
+        op_net_write,
+        op_net_close,
+        op_net_close_listener
     ],
     js = [dir "src/js", "console.js", "runtime.js"],
     options = { metrics: MetricsCollector, args: Vec<String> },
@@ -33,6 +45,7 @@ extension!(
         state.put(config.metrics);
         state.put(config.args);
         state.put(timers::TimerState::default());
+        state.put(net::NetState::default());
     },
     docs = "Bap builtin ops"
 );

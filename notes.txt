@@ -68,3 +68,37 @@ steady-state is ~5 ms, comfortably inside the Phase 6 spec ceiling of ≤8 ms.
 
 Verified: fmt/clippy(-D warnings)/test all green (17 unit + 8 integration); smoke checks for args passthrough,
 piped-REPL stdout purity, eval-error exit 1, sorted JSON keys.
+
+## 2026-08-19 — Phase 2 async I/O (tasks 1-3 done, task 4 in flight)
+
+- Phase 2 plan followed task-by-task from docs/superpowers/plans/2026-08-19-bap-phase-2-async-io.md.
+- Verified deno_core 0.410 async-op API facts before coding: async ops take `state: Rc<RefCell<OpState>>`;
+  `#[op2]` on an async fn is the base async form, `#[op2(async(lazy))]` opts into lazy polling and `fast` is
+  mandatory when the macro deems the op fast-compatible; 64-bit ints need an explicit `#[number]` (JS number)
+  or `#[bigint]` marker; `#[buffer]` return converts via `Vec<u8>`/`JsBuffer` (ArrayBufferMarker impls);
+  `#[serde]` on the fn enables struct returns (serde retval works on async ops too); `#[serde(rename_all =
+  "camelCase")]` gives JS the `{name, isFile, isDir}` shape; `JsBuffer` Derefs to `[u8]` so tokio read/write
+  take `data.as_ref()`; `RefMut<OpState>` needs a second `.borrow_mut::<T>()` hop to reach custom state types.
+- run_event_loop stays alive while module evaluation (top-level await) is pending AND ops are pending
+  (jsruntime.rs pending_module_evaluation gate), so timer/TCP/fetch fixtures with TLA resolve correctly.
+- Task 1 timers (commit dc2442e): TimerState{next_id, cancelled:HashSet} in OpState; op_timer_create (id),
+  op_timer_set_timeout(id, delay_ms) async sleeps then reports `armed` bool (cancel suppresses the callback
+  without a rejected promise), op_timer_clear(id); runtime.js glue `setTimeout`/`clearTimeout`.
+- Task 2 file I/O (commit 50e4de5): op_fs_read_file -> Uint8Array, op_fs_write_file, op_fs_read_dir ->
+  [{name,isFile,isDir}], op_fs_stat -> {size,modifiedMs}; exposed as bap.readFile/writeFile/readDir/stat;
+  runtime.js gained a compact encodeUtf8/decodeUtf8 (deno_core has no TextEncoder/TextDecoder).
+- Task 3 TCP (in progress): NetState{next_id, listeners, conns} resource table; op_net_listen(port) ->
+  {id, port} (port 0 = ephemeral), op_net_accept, op_net_connect(host, port) -> conn id, op_net_read (4096-byte
+  chunks, empty = EOF), op_net_write, op_net_close, op_net_close_listener; sockets are taken out of the map
+  before .await and re-inserted after, so no RefCell borrow spans an await.
+- Async-op pattern for metrics: started Instant at entry, `record(&state.borrow(), name, started)` after the
+  await (borrow only after the future yields, never held across it). Op names: timers.create/clear/setTimeout,
+  fs.readFile/writeFile/readDir/stat, net.listen/accept/connect/read/write/close/closeListener.
+- Tests: crates/bap_core/tests/async_io.rs drives TLA fixtures through run_script; tokio::time::timeout(5s)
+  guards the TCP test against hangs; fixtures pass paths via Bap.args. fs round-trip uses temp_dir + pid.
+- Open item being fixed: `E0716 temporary value dropped while borrowed` in bap_core --test async_io — the
+  borrow of `state` (RefCell<OpState>) flows into `run_script(&fixture(...))` where fixture() returns a String;
+  the temporary String from format! is dropped while run_script borrows it. Fix: bind the fixture path to a
+  local first.
+- Deferred to Task 4: fetch (reqwest) + per-op p50/p99 histograms (hdrhistogram) per plan; README/example
+  async.js update at the end of the phase per plan Verification section.
