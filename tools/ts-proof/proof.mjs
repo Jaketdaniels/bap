@@ -9,6 +9,7 @@ import { NodeFlags, SyntaxKind } from "typescript/unstable/ast";
 import {
   isBinaryExpression,
   isCallExpression,
+  isElementAccessExpression,
   isIdentifier,
   isNumericLiteral,
   isParenthesizedExpression,
@@ -34,9 +35,7 @@ function sha256(value) {
 
 function canonicalizeSpecifier(specifier) {
   try {
-    const url = new URL(specifier);
-    url.hash = "";
-    return url.href;
+    return new URL(specifier).href;
   } catch {
     return pathToFileURL(resolve(specifier)).href;
   }
@@ -132,6 +131,63 @@ function isTopLevelConst(statement) {
     && (statement.declarationList.flags & NodeFlags.Const) !== 0;
 }
 
+function declaredOnlyInAmbient(symbol, ambientFile, project) {
+  return Boolean(symbol?.declarations?.length)
+    && symbol.declarations.every(
+      (handle) => handle.resolve(project)?.getSourceFile().fileName === ambientFile.fileName,
+    );
+}
+
+function isAmbientBapIdentifier(node, checker, ambientFile, project) {
+  return isIdentifier(node)
+    && node.text === "Bap"
+    && declaredOnlyInAmbient(checker.getSymbolAtLocation(node), ambientFile, project);
+}
+
+function isBapNumericAccess(node, checker, ambientFile, project) {
+  const propertyAccess = isPropertyAccessExpression(node)
+    && node.name.text === "numeric";
+  const elementAccess = isElementAccessExpression(node)
+    && isStringLiteral(node.argumentExpression)
+    && node.argumentExpression.text === "numeric";
+  if ((!propertyAccess && !elementAccess)
+      || !isAmbientBapIdentifier(node.expression, checker, ambientFile, project)) {
+    return false;
+  }
+  return true;
+}
+
+function isDirectTrustedCall(node) {
+  const helper = node.parent;
+  const call = helper?.parent;
+  return isPropertyAccessExpression(node)
+    && isPropertyAccessExpression(helper)
+    && helper.expression === node
+    && !node.questionDotToken
+    && !helper.questionDotToken
+    && isCallExpression(call)
+    && call.expression === helper
+    && !call.questionDotToken;
+}
+
+function hasUnsafeBapNumericAccess(sourceFile, checker, ambientFile, project) {
+  let unsafe = false;
+  const visit = (node) => {
+    if (unsafe) return;
+    if (isAmbientBapIdentifier(node, checker, ambientFile, project)) {
+      const numericAccess = node.parent;
+      if (!isBapNumericAccess(numericAccess, checker, ambientFile, project)
+          || !isDirectTrustedCall(numericAccess)) {
+        unsafe = true;
+        return;
+      }
+    }
+    node.forEachChild(visit);
+  };
+  sourceFile.forEachChild(visit);
+  return unsafe;
+}
+
 function trustedHelper(node, checker, ambientFile, project) {
   if (!isPropertyAccessExpression(node)
       || !isPropertyAccessExpression(node.expression)
@@ -144,8 +200,7 @@ function trustedHelper(node, checker, ambientFile, project) {
   }
   for (const part of [node.expression.expression, node.expression.name, node.name]) {
     const symbol = checker.getSymbolAtLocation(part);
-    if (!symbol || !symbol.declarations?.length
-        || symbol.declarations.some((handle) => handle.resolve(project)?.getSourceFile().fileName !== ambientFile.fileName)) {
+    if (!declaredOnlyInAmbient(symbol, ambientFile, project)) {
       return undefined;
     }
   }
@@ -329,6 +384,7 @@ export async function prove(source, options = {}) {
       proofs: [],
     };
     if (diagnostics.some(({ category }) => category === "error")) return manifest;
+    if (hasUnsafeBapNumericAccess(sourceFile, checker, ambientFile, project)) return manifest;
 
     const declarations = new Map();
     const candidates = [];
@@ -343,14 +399,14 @@ export async function prove(source, options = {}) {
     }
 
     const evaluate = evaluator(source, sourceFile, ambientFile, project, checker, declarations);
+    const eligibleProofs = [];
     for (const declaration of candidates) {
-      if (manifest.proofs.length === MAX_PROOFS) break;
       try {
         const context = { nodes: 0, active: new Set([declaration]) };
         const result = evaluate(declaration.initializer, context);
         const range = byteRange(source, declaration.initializer, sourceFile);
         const slice = Buffer.from(source, "utf8").subarray(range.start, range.end);
-        manifest.proofs.push({
+        eligibleProofs.push({
           ...range,
           sliceHash: sha256(slice),
           evidence: result.evidence,
@@ -362,6 +418,16 @@ export async function prove(source, options = {}) {
         if (!(error instanceof UnsupportedExpression)) throw error;
       }
     }
+    if (eligibleProofs.length > MAX_PROOFS) {
+      manifest.failure = {
+        code: "BAP_PROOF_EDIT_LIMIT",
+        message: `proof request has ${eligibleProofs.length} eligible edits; limit is ${MAX_PROOFS}`,
+        limit: MAX_PROOFS,
+        eligibleEdits: eligibleProofs.length,
+      };
+      return manifest;
+    }
+    manifest.proofs = eligibleProofs;
     return manifest;
   } finally {
     checked.api.close();

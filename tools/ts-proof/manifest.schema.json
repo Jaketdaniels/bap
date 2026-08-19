@@ -30,7 +30,8 @@
       "type": "array",
       "maxItems": 1024,
       "items": { "$ref": "#/$defs/proof" }
-    }
+    },
+    "failure": { "$ref": "#/$defs/failure" }
   },
   "$defs": {
     "hash": {
@@ -63,6 +64,17 @@
         "end": { "type": "integer", "minimum": 0 },
         "line": { "type": "integer", "minimum": 1 },
         "column": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "limit", "eligibleEdits"],
+      "properties": {
+        "code": { "const": "BAP_PROOF_EDIT_LIMIT" },
+        "message": { "type": "string" },
+        "limit": { "const": 1024 },
+        "eligibleEdits": { "type": "integer", "minimum": 1025 }
       }
     },
     "evidence": {

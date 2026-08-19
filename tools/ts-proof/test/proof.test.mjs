@@ -43,6 +43,14 @@ test("emits protocol v1 metadata and closed evidence", async () => {
   assert.equal(proof.valueBits, "0x4014000000000000");
 });
 
+test("canonical specifiers preserve URL fragments", async () => {
+  const result = await prove(sourceWith("1"), {
+    specifier: "file:///workspace/../entry.ts#proof-target",
+  });
+
+  assert.equal(result.specifier, "file:///entry.ts#proof-target");
+});
+
 test("rejects mismatched units with TS2345 and a source location", async () => {
   const source = [
     'const length = Bap.numeric.unit("metre", 2);',
@@ -119,6 +127,31 @@ test("shuns shadowed Bap helpers", async () => {
   assert.deepEqual(result.proofs, []);
 });
 
+test("shuns trusted helpers after type-error-free reassignment", async () => {
+  const source = [
+    "(Bap.numeric as any).unit = (_name: string, value: number) => value;",
+    'export const result = Bap.numeric.unit("metre", 2);',
+    "",
+  ].join("\n");
+  const result = await prove(source);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(result.proofs, []);
+});
+
+test("shuns trusted helpers after reassignment through an escaped alias", async () => {
+  const source = [
+    "const { numeric } = Bap as any;",
+    "numeric.unit = (_name: string, value: number) => value;",
+    'export const result = Bap.numeric.unit("metre", 2);',
+    "",
+  ].join("\n");
+  const result = await prove(source);
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(result.proofs, []);
+});
+
 test("shuns optional access to trusted helpers", async () => {
   const source = sourceWith('Bap?.numeric.unit("metre", 2)');
   const result = await prove(source);
@@ -160,12 +193,17 @@ test("enforces expression depth and evidence node limits", async () => {
   assert.deepEqual((await prove(sourceWith(tooManyNodes))).proofs, []);
 });
 
-test("caps output at 1024 sorted non-overlapping edits", async () => {
+test("rejects a request with more than 1024 eligible edits", async () => {
   const source = Array.from({ length: 1025 }, (_, index) => `export const value${index} = ${index};`).join("\n");
   const result = await prove(source);
 
-  assert.equal(result.proofs.length, 1024);
-  assert.ok(result.proofs.every((proof, index, proofs) => index === 0 || proofs[index - 1].end <= proof.start));
+  assert.deepEqual(result.proofs, []);
+  assert.deepEqual(result.failure, {
+    code: "BAP_PROOF_EDIT_LIMIT",
+    message: "proof request has 1025 eligible edits; limit is 1024",
+    limit: 1024,
+    eligibleEdits: 1025,
+  });
 });
 
 test("only proves top-level const initializers", async () => {
@@ -203,6 +241,7 @@ test("ships a schema that requires the protocol contract", async () => {
     "proofs",
   ]);
   assert.deepEqual(schema.properties.proofs.maxItems, 1024);
+  assert.equal(schema.properties.failure.$ref, "#/$defs/failure");
   assert.ok(schema.$defs.evidence.properties.kind.enum.includes("unit.add"));
 });
 
