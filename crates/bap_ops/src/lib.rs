@@ -3,8 +3,10 @@
 #![forbid(unsafe_code)]
 
 mod console;
+mod fs;
 mod timers;
 pub use console::{op_bap_args, op_console_error, op_console_log, op_console_warn};
+pub use fs::{op_fs_read_dir, op_fs_read_file, op_fs_stat, op_fs_write_file};
 pub use timers::{op_timer_clear, op_timer_create, op_timer_set_timeout};
 
 use bap_metrics::MetricsCollector;
@@ -19,7 +21,11 @@ extension!(
         op_bap_args,
         op_timer_create,
         op_timer_clear,
-        op_timer_set_timeout
+        op_timer_set_timeout,
+        op_fs_read_file,
+        op_fs_write_file,
+        op_fs_read_dir,
+        op_fs_stat
     ],
     js = [dir "src/js", "console.js", "runtime.js"],
     options = { metrics: MetricsCollector, args: Vec<String> },
