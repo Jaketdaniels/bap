@@ -1,0 +1,11 @@
+[package]
+name = "bap_ops"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+bap_metrics = { path = "../bap_metrics" }
+deno_core.workspace = true
+deno_ops.workspace = true
