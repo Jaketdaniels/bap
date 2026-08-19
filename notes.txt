@@ -1,0 +1,33 @@
+# Bap notes
+
+## 2026-08-19 — planning docs
+
+- Scope decided: plan all 5 phases; implement Phase 1 only this session. Git init approved.
+- Stack confirmed against current upstream: `deno_core 0.410` + `deno_ops 0.286` + `serde_v8 0.319`.
+  Verified from docs.rs/examples: `extension!` uses `config = {...}` + `state = |state, config| state.put(config.field)`,
+  generates `name::init(config_fields)`; ops via `#[op2]`; JS calls ops through `Deno.core.ops.*`.
+- Governance decision: every crate `#![forbid(unsafe_code)]` in Phase 1 (zero unsafe). Miri gate wired in CI on `bap_metrics`
+  (pure Rust, no V8 FFI); bap_core embeds V8 so Miri is deferred until unsafe modules exist.
+- Pointer compression is a V8 build-time flag, not a runtime toggle — Phase 6 measures before deciding, likely ships default.
+- Numerics SIMD via `wide` crate (f64x4/i64x4) to avoid nightly `std::simd`; falls back to scalar for checked ints.
+- Benchmark honesty: Phase 6 SSR numbers are synthetic-route comparisons; real Next.js-on-Bap is out of scope.
+
+## 2026-08-19 — drift fix vs original spec
+
+- Renumbered to 6 phases: 1 minimal core, 2 async I/O, 3 TS pipeline, 4 Node compat & adoption (NEW),
+  5 numerics & orchestration (was 4), 6 tail latency (was 5). JSC hybrid engine moved to a Future row in roadmap.
+- Phase 4 (new): CJS loader + Node-core polyfill shim, `bap.json` + `bap doctor` + `bap report compat`,
+  adoption pathway + LTS/semver/deprecation-matrix, npm-compat harness gated ≥99%.
+- Phase 5 rewritten: tree-structured task planner (arithmetic intensity × data locality, fusion, CPU vs GPU as
+  trait-sealed decision point), type-integrated constant folding preview, `bap:schema` + lineage + experiment bundles,
+  observability/numerics REPL (`.interval`/`.fixed`/`.i64`/`.task`).
+- Phase 6 rewritten: pointer-compression validation study, `bap bench` command, spec target table
+  (cold start ≤8 ms, SSR p50 ≤20, p99 ≤150, npm ≥99%).
+- Phase 3 gained: `bap run --watch` hot reload + minimal `bap bench`; notes pipeline feeds both engines.
+- Phase 1 REPL documented as the seed for the Phase 5 observability/numerics REPL; Phase 2 carries the
+  dual-runtime concurrency note (Tokio I/O isolate vs rayon compute pool, separate GC heaps later).
+
+## Cold start (to fill during Phase 1 execution)
+
+- debug: TBD
+- release: TBD
