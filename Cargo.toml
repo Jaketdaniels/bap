@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "crates/bap_core",
+  "crates/bap_math",
   "crates/bap_ops",
   "crates/bap_metrics",
   "crates/bap_ts",
