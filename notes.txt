@@ -102,3 +102,26 @@ piped-REPL stdout purity, eval-error exit 1, sorted JSON keys.
   local first.
 - Deferred to Task 4: fetch (reqwest) + per-op p50/p99 histograms (hdrhistogram) per plan; README/example
   async.js update at the end of the phase per plan Verification section.
+
+## 2026-08-19 — Phase 2 complete (5 commits)
+
+- Task 3 TCP (commit 31b903a): NetState resource table {next_id, listeners, conns}; sockets taken out of
+  the map before .await and re-inserted under the ORIGINAL id (a re-insert bug initially reallocated ids,
+  making client ids stale after write -> "net: unknown connection"; fixed with insert_listener/insert_conn).
+  bap.listen/accept/connect/read/write/close/closeListener; read returns empty Uint8Array at EOF; port 0
+  reports the bound ephemeral port. Single-script echo fixture (accept + connect as concurrent promises;
+  no tokio::spawn because JsRuntime is !Send) with a 5s tokio timeout guard; refused test hits port 1.
+- Task 4 fetch (commit ef122fa): op_fetch (reqwest 0.12, default-features=false) resolves {id,status,ok,
+  headers}; body stored in FetchState and returned by op_fetch_body as Uint8Array; runtime.js builds
+  {status, ok, headers, text(), arrayBuffer()}. Test spins a manual tokio::net HTTP/1.1 fixture inside the
+  test (no axum dep). deno_web is incompatible with deno_core 0.410, so the plan's internal-streams
+  fallback applies (documented in the commit body).
+- Task 5 metrics (commit 66cb8d3): hdrhistogram 7 dep on bap_metrics; record_op_async feeds a per-name
+  Histogram (microsecond buckets, saturating_record); snapshot() computes p50/p99 in ns onto OpStat
+  (Option, null for sync ops). op-side timing centralized in crates/bap_ops/src/metrics.rs
+  (record_op / record_op_async helpers; every registered op instrumented). CLI pretty output appends
+  ", N us p50, N us p99" for async ops.
+- Plan verification passes: fmt/clippy(-D warnings)/test (40 tests) green; examples/async.js (new) run with
+  --metrics json shows timers.create + setTimeout + fetch.request/body + fs.writeFile with p50/p99 present
+  on async ops and null on console.log/timers.create. Plan doc checkboxes all ticked + status note.
+- Tests now 40 total: 6 unit (metrics) + 2 (console) + 6 (fs) + 6 (net) + 10 async_io + 2 + 3 + 1 ignored.

@@ -1,5 +1,7 @@
 # Bap Phase 2: Async Runtime & I/O Implementation Plan
 
+> **Status: complete** — implemented 2026-08-19 across five commits: `feat(ops): timers` (`dc2442e`), `feat(ops): file io` (`50e4de5`), `feat(ops): tcp networking` (`31b903a`), `feat(ops): fetch` (`ef122fa`), `feat(metrics): per-op p50/p99 latency histograms` (`66cb8d3`). API drift resolved at build time: bare `#[op2(async)]` is invalid in `deno_ops 0.286`, so all async ops use `#[op2(async(lazy), fast)]`; 64-bit ints need an explicit `#[number]` marker; `deno_web` is incompatible with `deno_core 0.410`, so Task 4 used the internal-streams fallback (body held in `FetchState`, fetched by id via a `#[buffer]` op). Verification below passes; `examples/async.js` demonstrates the phase.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. API pins verified at build time against the current `deno_core` release before starting.
 
 **Goal:** Add a Tokio-backed async I/O layer to Bap: timers, file I/O, TCP, and a WHATWG-style `fetch`, mapping JS promises to Rust futures through `deno_core` ops, while keeping the I/O surface small and spec-like so a separate compute pool can be added later without breaking semantics.
@@ -19,7 +21,7 @@
 **Files:**
 - Modify: `crates/bap_ops/src/timers.rs` (new), `crates/bap_ops/src/lib.rs` (register ops), `crates/bap_ops/src/js/runtime.js` (new glue)
 
-- [ ] **Step 1: Write `setTimeout`/`clearTimeout` ops** using `#[op2(async)]` returning a future that completes after the delay, plus a `clear` op removing a pending timer by id from a `HashMap` held in `OpState`. Timer ids returned to JS as numbers.
+- [x] **Step 1: Write `setTimeout`/`clearTimeout` ops** using `#[op2(async)]` returning a future that completes after the delay, plus a `clear` op removing a pending timer by id from a `HashMap` held in `OpState`. Timer ids returned to JS as numbers.
 
 ```rust
 #[op2(async)]
@@ -29,48 +31,48 @@ pub async fn op_timer_set_timeout(#[smi] delay_ms: u64) -> Result<(), JsErrorBox
 }
 ```
 
-- [ ] **Step 2: Write the JS glue** in `runtime.js` mapping `setTimeout(fn, ms)` to the op + `queueMicrotask`/promise completion, and `clearTimeout` to the clear op. Use `Deno.core.ops.op_timer_*`.
-- [ ] **Step 3: Tests** — `crates/bap_core` integration test: evaluate `await new Promise(r => setTimeout(() => r("ok"), 5))` inside a module and assert it resolves under `run_event_loop`; assert timer ordering (two timers fire in order). Use `tokio::test` with `time::pause` for determinism where possible.
-- [ ] **Step 4: Verify** `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test -p bap_core`; commit `feat(ops): timers`.
+- [x] **Step 2: Write the JS glue** in `runtime.js` mapping `setTimeout(fn, ms)` to the op + `queueMicrotask`/promise completion, and `clearTimeout` to the clear op. Use `Deno.core.ops.op_timer_*`.
+- [x] **Step 3: Tests** — `crates/bap_core` integration test: evaluate `await new Promise(r => setTimeout(() => r("ok"), 5))` inside a module and assert it resolves under `run_event_loop`; assert timer ordering (two timers fire in order). Use `tokio::test` with `time::pause` for determinism where possible.
+- [x] **Step 4: Verify** `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test -p bap_core`; commit `feat(ops): timers`.
 
 ### Task 2: File I/O ops
 
 **Files:**
 - Modify: `crates/bap_ops/src/fs.rs` (new), `crates/bap_ops/src/lib.rs`, `crates/bap_ops/src/js/runtime.js`
 
-- [ ] **Step 1: Write `readFile`, `writeFile`, `readDir`, `stat` ops** via `tokio::fs`. Signature: `readFile(path) -> Uint8Array|string`, `writeFile(path, data)`, `readDir(path) -> array of {name, isFile, isDir}`, `stat(path) -> {size, modified}`. Errors surface as JS `Error` with a readable message.
-- [ ] **Step 2: Expose in `runtime.js`** as `bap.readFile`, `bap.writeFile`, `bap.readDir`, `bap.stat`.
-- [ ] **Step 3: Tests** — fs round-trip to a temp file (write then read back), readDir on the workspace `examples/` dir, stat on a known file. Run against a real tempdir (`std::env::temp_dir()` + uuid).
-- [ ] **Step 4: Verify and commit** `feat(ops): file io`.
+- [x] **Step 1: Write `readFile`, `writeFile`, `readDir`, `stat` ops** via `tokio::fs`. Signature: `readFile(path) -> Uint8Array|string`, `writeFile(path, data)`, `readDir(path) -> array of {name, isFile, isDir}`, `stat(path) -> {size, modified}`. Errors surface as JS `Error` with a readable message.
+- [x] **Step 2: Expose in `runtime.js`** as `bap.readFile`, `bap.writeFile`, `bap.readDir`, `bap.stat`.
+- [x] **Step 3: Tests** — fs round-trip to a temp file (write then read back), readDir on the workspace `examples/` dir, stat on a known file. Run against a real tempdir (`std::env::temp_dir()` + uuid).
+- [x] **Step 4: Verify and commit** `feat(ops): file io`.
 
 ### Task 3: TCP ops (echo server + client)
 
 **Files:**
 - Modify: `crates/bap_ops/src/net.rs` (new), `crates/bap_ops/src/lib.rs`, `crates/bap_ops/src/js/runtime.js`
 
-- [ ] **Step 1: Write `listen`, `connect`, and connection handlers** using `tokio::net`. Ops: `bap.listen(port) -> server handle`, `bap.connect(host, port) -> connection`. Connection lifecycle handled with an async op per accepted socket; data flows via `Uint8Array` chunks. Keep it minimal: an echo protocol for tests only, no HTTP parsing here.
-- [ ] **Step 2: Tests** — bind an ephemeral port (port 0), evaluate a script that connects and echoes a buffer, assert the round-trip bytes match, then close. Guard with a tokio timeout to avoid hangs.
-- [ ] **Step 3: Verify and commit** `feat(ops): tcp`.
+- [x] **Step 1: Write `listen`, `connect`, and connection handlers** using `tokio::net`. Ops: `bap.listen(port) -> server handle`, `bap.connect(host, port) -> connection`. Connection lifecycle handled with an async op per accepted socket; data flows via `Uint8Array` chunks. Keep it minimal: an echo protocol for tests only, no HTTP parsing here.
+- [x] **Step 2: Tests** — bind an ephemeral port (port 0), evaluate a script that connects and echoes a buffer, assert the round-trip bytes match, then close. Guard with a tokio timeout to avoid hangs.
+- [x] **Step 3: Verify and commit** `feat(ops): tcp`.
 
 ### Task 4: `fetch` (WHATWG-style)
 
 **Files:**
 - Modify: `crates/bap_ops/src/fetch.rs` (new), `crates/bap_ops/src/lib.rs`, `crates/bap_ops/src/js/runtime.js`, `crates/bap_ops/Cargo.toml` (add `reqwest`)
 
-- [ ] **Step 1: Write `op_fetch`** using `reqwest::Client` with a response type carrying status, headers, and body bytes. Return a JS object from the op; body exposure via `Response.text()`/`Response.arrayBuffer()` in the glue.
-- [ ] **Step 2: Wire WHATWG Streams** — prefer `deno_web` for a spec-compliant `ReadableStream` on `response.body`; if the crate version is incompatible with the pinned `deno_core`, fall back to a minimal internal `ReadableStream` implemented in `runtime.js` over a body-chunk op. Document the choice in the commit body.
-- [ ] **Step 3: Tests** — spin up a `tokio` HTTP fixture (e.g. `axum` or a manual `tokio::net` listener) in the test, fetch `http://127.0.0.1:<port>/`, assert status 200 and body content; assert an error surfaces for a refused connection.
-- [ ] **Step 4: Verify and commit** `feat(ops): fetch`.
+- [x] **Step 1: Write `op_fetch`** using `reqwest::Client` with a response type carrying status, headers, and body bytes. Return a JS object from the op; body exposure via `Response.text()`/`Response.arrayBuffer()` in the glue.
+- [x] **Step 2: Wire WHATWG Streams** — prefer `deno_web` for a spec-compliant `ReadableStream` on `response.body`; if the crate version is incompatible with the pinned `deno_core`, fall back to a minimal internal `ReadableStream` implemented in `runtime.js` over a body-chunk op. Document the choice in the commit body.
+- [x] **Step 3: Tests** — spin up a `tokio` HTTP fixture (e.g. `axum` or a manual `tokio::net` listener) in the test, fetch `http://127.0.0.1:<port>/`, assert status 200 and body content; assert an error surfaces for a refused connection.
+- [x] **Step 4: Verify and commit** `feat(ops): fetch`.
 
 ### Task 5: Per-op latency metrics
 
 **Files:**
 - Modify: `crates/bap_ops/src/lib.rs`, `crates/bap_metrics/src/metrics.rs`
 
-- [ ] **Step 1: Centralize op timing** — replace per-op `Instant` calls with a small `record_op` helper invoked at each op boundary (sync ops time inline; async ops time before `.await` resolution by wrapping the future). Confirm every registered op in the extension is instrumented.
-- [ ] **Step 2: Add p50/p99 histograms** to `bap_metrics` using `hdrhistogram` for async ops (timers, fs, net, fetch), so Phase 5 can report per-op tail latency. Keep sync ops on `{calls, total_ns, max_ns}`.
-- [ ] **Step 3: Tests** — assert histogram percentiles update after a batch of mocked durations; assert `record_op` wraps both sync and async paths.
-- [ ] **Step 4: Verify and commit** `feat(metrics): op latency histograms`.
+- [x] **Step 1: Centralize op timing** — replace per-op `Instant` calls with a small `record_op` helper invoked at each op boundary (sync ops time inline; async ops time before `.await` resolution by wrapping the future). Confirm every registered op in the extension is instrumented.
+- [x] **Step 2: Add p50/p99 histograms** to `bap_metrics` using `hdrhistogram` for async ops (timers, fs, net, fetch), so Phase 5 can report per-op tail latency. Keep sync ops on `{calls, total_ns, max_ns}`.
+- [x] **Step 3: Tests** — assert histogram percentiles update after a batch of mocked durations; assert `record_op` wraps both sync and async paths.
+- [x] **Step 4: Verify and commit** `feat(metrics): op latency histograms`.
 
 ---
 
