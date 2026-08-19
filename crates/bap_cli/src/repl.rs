@@ -1,3 +1,5 @@
+//! Interactive and piped REPL loop.
+
 use crate::cli::MetricsFormat;
 use crate::run::report;
 use bap_core::BapRuntime;
@@ -9,6 +11,8 @@ use std::iter::Peekable;
 use std::str::Chars;
 use std::time::Instant;
 
+/// Runs the REPL, selecting interactive or piped mode from the stdin tty state.
+/// Prints the metrics report to stderr before returning.
 pub fn run(
     format: MetricsFormat,
     metrics: MetricsCollector,
@@ -27,6 +31,8 @@ pub fn run(
     Ok(())
 }
 
+/// Evaluates `code`, prints its value, and records `repl.eval` timing and heap.
+/// Returns false when evaluation errors. `verbose` gates the timing line.
 fn eval_line(
     runtime: &mut BapRuntime,
     metrics: &MetricsCollector,
@@ -57,6 +63,8 @@ fn eval_line(
     ok
 }
 
+/// Returns true when `code` has balanced delimiters outside strings and comments.
+/// Unterminated strings, templates, and block comments count as incomplete.
 fn is_complete(code: &str) -> bool {
     let mut depth: i32 = 0;
     let mut chars = code.chars().peekable();
@@ -86,6 +94,8 @@ fn is_complete(code: &str) -> bool {
     depth <= 0
 }
 
+/// Consumes a quoted string after `quote`, honoring backslash escapes.
+/// Returns false when the string reaches end of input unterminated.
 fn skip_string(chars: &mut Peekable<Chars<'_>>, quote: char) -> bool {
     while let Some(ch) = chars.next() {
         match ch {
@@ -99,6 +109,8 @@ fn skip_string(chars: &mut Peekable<Chars<'_>>, quote: char) -> bool {
     false
 }
 
+/// Consumes a line or block comment; `starter` is the char after the slash.
+/// Returns false when a block comment reaches end of input unterminated.
 fn skip_comment(chars: &mut Peekable<Chars<'_>>, starter: char) -> bool {
     match starter {
         '/' => {
@@ -122,6 +134,8 @@ fn skip_comment(chars: &mut Peekable<Chars<'_>>, starter: char) -> bool {
     }
 }
 
+/// Consumes a template literal, tracking `${}` interpolation depth.
+/// Returns false when the template reaches end of input unterminated.
 fn skip_template(chars: &mut Peekable<Chars<'_>>) -> bool {
     let mut interp_depth: i32 = 0;
     while let Some(ch) = chars.next() {
@@ -142,6 +156,7 @@ fn skip_template(chars: &mut Peekable<Chars<'_>>) -> bool {
     false
 }
 
+/// Readline loop with `bap>` and `bap*` prompts; `.exit` ends the session.
 fn run_interactive(runtime: &mut BapRuntime, metrics: &MetricsCollector) -> rustyline::Result<()> {
     let mut editor = DefaultEditor::new()?;
     let mut pending = String::new();
@@ -166,6 +181,8 @@ fn run_interactive(runtime: &mut BapRuntime, metrics: &MetricsCollector) -> rust
     Ok(())
 }
 
+/// Evaluates each non-empty stdin line without timing output.
+/// Returns true when any line errored.
 fn run_piped(runtime: &mut BapRuntime, metrics: &MetricsCollector) -> std::io::Result<bool> {
     let stdin = std::io::stdin();
     let mut errored = false;

@@ -1,8 +1,10 @@
 use serde::Serialize;
 use std::collections::BTreeMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
+/// Timing totals for one named op.
+/// Durations are wall-clock nanoseconds.
 #[derive(Debug, Clone, Copy, Default, Serialize)]
 pub struct OpStat {
     pub calls: u64,
@@ -10,6 +12,7 @@ pub struct OpStat {
     pub max_ns: u128,
 }
 
+/// One heap measurement with an elapsed time from the collector epoch.
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct HeapSample {
     pub elapsed_ms: u128,
@@ -17,6 +20,8 @@ pub struct HeapSample {
     pub total_bytes: usize,
 }
 
+/// Clone of the collected state at one point in time.
+/// `ops` keys sort lexically for deterministic reports.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct MetricsSnapshot {
     pub cold_start_ms: f64,
@@ -32,6 +37,8 @@ struct Shared {
     heap_samples: Vec<HeapSample>,
 }
 
+/// Thread-safe metrics store shared through an `Arc<Mutex<_>>`.
+/// Clones reference the same underlying state.
 #[derive(Debug, Clone)]
 pub struct MetricsCollector {
     inner: Arc<Mutex<Shared>>,
@@ -44,6 +51,14 @@ impl Default for MetricsCollector {
 }
 
 impl MetricsCollector {
+    /// Locks the shared state, recovering from a poisoned mutex.
+    fn lock(&self) -> MutexGuard<'_, Shared> {
+        self.inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    /// Creates a collector with empty state and a fresh epoch.
     pub fn new() -> Self {
         Self {
             inner: Arc::new(Mutex::new(Shared {
@@ -55,23 +70,26 @@ impl MetricsCollector {
         }
     }
 
+    /// Sets `cold_start_ms` to `duration` expressed in milliseconds.
     pub fn record_cold_start(&self, duration: Duration) {
-        self.inner
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .cold_start_ms = duration.as_secs_f64() * 1000.0;
+        self.lock().cold_start_ms = duration.as_secs_f64() * 1000.0;
     }
 
+    /// Adds one call of `name` with the given duration.
+    /// Increments the call count and rolls up total and max nanoseconds.
     pub fn record_op(&self, name: &str, duration: Duration) {
-        let mut shared = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        let mut shared = self.lock();
         let stat = shared.ops.entry(name.to_owned()).or_default();
         stat.calls += 1;
-        stat.total_ns += duration.as_nanos();
-        stat.max_ns = stat.max_ns.max(duration.as_nanos());
+        let ns = duration.as_nanos();
+        stat.total_ns += ns;
+        stat.max_ns = stat.max_ns.max(ns);
     }
 
+    /// Appends a heap sample with the given byte counts.
+    /// The sample's `elapsed_ms` is measured from the collector epoch.
     pub fn record_heap(&self, used_bytes: usize, total_bytes: usize) {
-        let mut shared = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        let mut shared = self.lock();
         let elapsed_ms = shared.epoch.elapsed().as_millis();
         shared.heap_samples.push(HeapSample {
             elapsed_ms,
@@ -80,8 +98,9 @@ impl MetricsCollector {
         });
     }
 
+    /// Clones the current state into a `MetricsSnapshot`.
     pub fn snapshot(&self) -> MetricsSnapshot {
-        let shared = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        let shared = self.lock();
         MetricsSnapshot {
             cold_start_ms: shared.cold_start_ms,
             ops: shared.ops.clone(),

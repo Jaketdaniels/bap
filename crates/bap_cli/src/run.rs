@@ -1,7 +1,11 @@
+//! `bap run` execution and metrics reporting.
+
 use crate::cli::MetricsFormat;
 use bap_core::BapRuntime;
 use bap_metrics::{MetricsCollector, MetricsSnapshot};
 
+/// Runs the file at `path` with `script_args` and returns the process exit code.
+/// Reports the snapshot to stderr on success and `bap: {error}` on failure.
 pub fn run_file(
     path: &str,
     script_args: Vec<String>,
@@ -31,6 +35,7 @@ pub fn run_file(
     }
 }
 
+/// Prints the snapshot to stderr in `format`.
 pub fn report(format: MetricsFormat, snap: &MetricsSnapshot) {
     match format {
         MetricsFormat::Pretty => {

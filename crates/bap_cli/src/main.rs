@@ -1,3 +1,6 @@
+//! bap command-line entry point.
+//! Parses arguments and dispatches to `run` or `repl`.
+
 #![forbid(unsafe_code)]
 
 mod cli;

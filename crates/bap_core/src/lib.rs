@@ -1,3 +1,6 @@
+//! V8-backed runtime embedding the bap extension.
+//! Loads ES modules and evaluates expressions to JSON values.
+
 #![forbid(unsafe_code)]
 
 mod error;
@@ -8,15 +11,20 @@ use serde_json::Value;
 
 pub use error::{Error, ErrorKind};
 
+/// Owns a V8 isolate and the bap extension.
+/// `eval` targets a single isolate with no separate worker.
 pub struct BapRuntime {
     runtime: JsRuntime,
 }
 
 impl BapRuntime {
+    /// Creates a runtime with no script arguments.
     pub fn new(metrics: MetricsCollector) -> Self {
         Self::with_args(metrics, Vec::new())
     }
 
+    /// Creates a runtime whose `Bap.args` exposes `args`.
+    /// Measures and records cold start from the isolate construction.
     pub fn with_args(metrics: MetricsCollector, args: Vec<String>) -> Self {
         let extensions = vec![bap_ops::bap::init(metrics.clone(), args)];
         let started = std::time::Instant::now();
@@ -29,6 +37,8 @@ impl BapRuntime {
         Self { runtime }
     }
 
+    /// Loads and evaluates the ES module at `path`, driving the event loop to completion.
+    /// Returns an `Error` classified by the failing stage.
     pub async fn run_script(&mut self, path: &str) -> Result<(), Error> {
         let cwd = std::env::current_dir().map_err(Error::io)?;
         let main_module = deno_core::resolve_path(path, &cwd).map_err(Error::load)?;
@@ -46,6 +56,8 @@ impl BapRuntime {
         Ok(())
     }
 
+    /// Executes `code` and converts the result to a JSON value.
+    /// Returns `None` when the result is `undefined`.
     pub fn eval(&mut self, code: &str) -> Result<Option<Value>, Error> {
         let global = self
             .runtime
@@ -61,6 +73,7 @@ impl BapRuntime {
         ))
     }
 
+    /// Returns `(used, total)` heap bytes reported by the isolate.
     pub fn sample_heap(&mut self) -> (usize, usize) {
         let isolate = self.runtime.v8_isolate();
         let stats = isolate.get_heap_statistics();

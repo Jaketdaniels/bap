@@ -1,3 +1,5 @@
+//! The bap V8 extension: console ops, script args, and their JS bootstrap.
+
 #![forbid(unsafe_code)]
 
 mod console;
