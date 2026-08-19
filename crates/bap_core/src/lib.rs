@@ -6,7 +6,7 @@
 mod error;
 
 use bap_metrics::MetricsCollector;
-use deno_core::{FsModuleLoader, JsRuntime, RuntimeOptions};
+use deno_core::{FsModuleLoader, JsRuntime, ModuleLoader, RuntimeOptions};
 use serde_json::Value;
 
 pub use error::{Error, ErrorKind};
@@ -26,10 +26,19 @@ impl BapRuntime {
     /// Creates a runtime whose `Bap.args` exposes `args`.
     /// Measures and records cold start from the isolate construction.
     pub fn with_args(metrics: MetricsCollector, args: Vec<String>) -> Self {
+        Self::with_args_and_loader(metrics, args, std::rc::Rc::new(FsModuleLoader))
+    }
+
+    /// Creates a runtime with script arguments and a caller-provided module loader.
+    pub fn with_args_and_loader(
+        metrics: MetricsCollector,
+        args: Vec<String>,
+        module_loader: std::rc::Rc<dyn ModuleLoader>,
+    ) -> Self {
         let extensions = vec![bap_ops::bap::init(metrics.clone(), args)];
         let started = std::time::Instant::now();
         let runtime = JsRuntime::new(RuntimeOptions {
-            module_loader: Some(std::rc::Rc::new(FsModuleLoader)),
+            module_loader: Some(module_loader),
             extensions,
             ..Default::default()
         });

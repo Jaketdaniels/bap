@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 bap_core = { path = "../bap_core" }
 bap_metrics = { path = "../bap_metrics" }
+bap_ts = { path = "../bap_ts" }
 clap = { version = "4", features = ["derive"] }
 rustyline = "18"
 serde_json.workspace = true

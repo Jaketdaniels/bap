@@ -7,6 +7,10 @@ fn hello_path() -> String {
     format!("{}/../../examples/hello.js", env!("CARGO_MANIFEST_DIR"))
 }
 
+fn fixture(path: &str) -> String {
+    format!("{}/tests/fixtures/{path}", env!("CARGO_MANIFEST_DIR"))
+}
+
 #[test]
 fn run_hello_prints_stdout() {
     let out = Command::new(BIN)
@@ -98,4 +102,32 @@ fn metrics_flag_after_subcommand_is_accepted() {
     assert!(out.status.success());
     let stderr = String::from_utf8(out.stderr).unwrap();
     assert!(stderr.contains("\"cold_start_ms\""));
+}
+
+#[test]
+fn runs_typescript_entry() {
+    let out = Command::new(BIN)
+        .args(["run", &fixture("ts/entry.ts")])
+        .output()
+        .expect("spawn bap");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "typed 42\n");
+}
+
+#[test]
+fn js_entry_imports_typescript_dependency() {
+    let out = Command::new(BIN)
+        .args(["run", &fixture("ts/mixed.js")])
+        .output()
+        .expect("spawn bap");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "typed 42\n");
 }

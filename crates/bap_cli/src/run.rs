@@ -3,6 +3,8 @@
 use crate::cli::MetricsFormat;
 use bap_core::BapRuntime;
 use bap_metrics::{MetricsCollector, MetricsSnapshot};
+use bap_ts::TsModuleLoader;
+use std::rc::Rc;
 
 /// Runs the file at `path` with `script_args` and returns the process exit code.
 /// Reports the snapshot to stderr on success and `bap: {error}` on failure.
@@ -12,12 +14,20 @@ pub fn run_file(
     format: MetricsFormat,
     metrics: MetricsCollector,
 ) -> i32 {
+    let loader = match TsModuleLoader::new(std::env::temp_dir().join("bap-ts-cache-v1")) {
+        Ok(loader) => loader,
+        Err(error) => {
+            eprintln!("bap: load: failed to initialize TypeScript cache: {error}");
+            return 1;
+        }
+    };
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .expect("failed to build tokio runtime");
     let result = rt.block_on(async {
-        let mut runtime = BapRuntime::with_args(metrics.clone(), script_args);
+        let mut runtime =
+            BapRuntime::with_args_and_loader(metrics.clone(), script_args, Rc::new(loader));
         let result = runtime.run_script(path).await;
         let (used, total) = runtime.sample_heap();
         metrics.record_heap(used, total);

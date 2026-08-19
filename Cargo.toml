@@ -4,6 +4,7 @@ members = [
   "crates/bap_core",
   "crates/bap_ops",
   "crates/bap_metrics",
+  "crates/bap_ts",
   "crates/bap_cli",
 ]
 
