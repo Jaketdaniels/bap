@@ -3,19 +3,30 @@
 #![forbid(unsafe_code)]
 
 mod console;
+mod timers;
 pub use console::{op_bap_args, op_console_error, op_console_log, op_console_warn};
+pub use timers::{op_timer_clear, op_timer_create, op_timer_set_timeout};
 
 use bap_metrics::MetricsCollector;
 use deno_core::extension;
 
 extension!(
     bap,
-    ops = [op_console_log, op_console_error, op_console_warn, op_bap_args],
-    js = [dir "src/js", "console.js"],
+    ops = [
+        op_console_log,
+        op_console_error,
+        op_console_warn,
+        op_bap_args,
+        op_timer_create,
+        op_timer_clear,
+        op_timer_set_timeout
+    ],
+    js = [dir "src/js", "console.js", "runtime.js"],
     options = { metrics: MetricsCollector, args: Vec<String> },
     state = |state, config| {
         state.put(config.metrics);
         state.put(config.args);
+        state.put(timers::TimerState::default());
     },
     docs = "Bap builtin ops"
 );

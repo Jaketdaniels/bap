@@ -127,6 +127,7 @@ dependencies = [
  "deno_core",
  "deno_error",
  "deno_ops",
+ "tokio",
  "tracing",
 ]
 
