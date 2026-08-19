@@ -2,12 +2,15 @@ use crate::cli::MetricsFormat;
 use crate::run::report;
 use bap_core::BapRuntime;
 use bap_metrics::MetricsCollector;
-use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
+use rustyline::error::ReadlineError;
 use std::io::{BufRead, IsTerminal};
 use std::time::Instant;
 
-pub fn run(format: MetricsFormat, metrics: MetricsCollector) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(
+    format: MetricsFormat,
+    metrics: MetricsCollector,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut runtime = BapRuntime::new(metrics.clone());
     println!("bap {} — .exit to quit", env!("CARGO_PKG_VERSION"));
     if std::io::stdin().is_terminal() {
@@ -43,10 +46,7 @@ fn is_complete(code: &str) -> bool {
     depth <= 0
 }
 
-fn run_interactive(
-    runtime: &mut BapRuntime,
-    metrics: &MetricsCollector,
-) -> rustyline::Result<()> {
+fn run_interactive(runtime: &mut BapRuntime, metrics: &MetricsCollector) -> rustyline::Result<()> {
     let mut editor = DefaultEditor::new()?;
     let mut pending = String::new();
     loop {

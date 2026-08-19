@@ -15,7 +15,7 @@ license = "MIT"
 repository = "https://github.com/sirwillchris/kyx-link-generator"
 
 [workspace.dependencies]
-deno_core = { version = "0.410", features = ["include_icudata"] }
+deno_core = { version = "0.410", features = ["include_icu_data"] }
 deno_ops = "0.286"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

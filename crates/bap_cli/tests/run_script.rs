@@ -26,8 +26,9 @@ fn metrics_json_reports_console_ops() {
         .expect("spawn bap");
     assert!(out.status.success());
     let stderr = String::from_utf8(out.stderr).unwrap();
+    let start = stderr.find('{').expect("metrics json on stderr");
     let snap: serde_json::Value =
-        serde_json::from_str(&stderr).expect("metrics json written to stderr");
+        serde_json::from_str(&stderr[start..]).expect("metrics json on stderr");
     assert!(snap["cold_start_ms"].as_f64().is_some());
     assert!(snap["ops"]["console.log"]["calls"].as_u64().unwrap() >= 2);
 }

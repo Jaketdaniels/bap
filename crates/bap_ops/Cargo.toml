@@ -9,3 +9,5 @@ license.workspace = true
 bap_metrics = { path = "../bap_metrics" }
 deno_core.workspace = true
 deno_ops.workspace = true
+deno_error = { version = "=0.7.1", features = ["serde_json", "serde", "url", "tokio"] }
+tracing.workspace = true
