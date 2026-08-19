@@ -27,7 +27,10 @@
 - Phase 1 REPL documented as the seed for the Phase 5 observability/numerics REPL; Phase 2 carries the
   dual-runtime concurrency note (Tokio I/O isolate vs rayon compute pool, separate GC heaps later).
 
-## Cold start (to fill during Phase 1 execution)
+## Cold start (Phase 1 execution, macOS arm64, M-series)
 
-- debug: TBD
-- release: TBD
+- debug: 4.3 / 5.2 / 42.1 ms (first run cold page-cache; steady ~4-5 ms)
+- release: 5.0 / 6.1 / 19.8 ms (first run cold page-cache; steady ~5-6 ms)
+
+First invocation in a fresh boot is ~20-42 ms (page-cache miss on the 30+ MB v8/dylib);
+steady-state is ~5 ms, comfortably inside the Phase 6 spec ceiling of ≤8 ms.
