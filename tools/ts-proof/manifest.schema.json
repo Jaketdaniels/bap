@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bap.dev/schemas/proof-manifest-v1.json",
+  "title": "Bap TypeScript proof manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "typescriptVersion",
+    "specifier",
+    "sourceHash",
+    "dependencies",
+    "diagnostics",
+    "proofs"
+  ],
+  "properties": {
+    "protocolVersion": { "const": 1 },
+    "typescriptVersion": { "const": "7.0.2" },
+    "specifier": { "type": "string", "format": "uri" },
+    "sourceHash": { "$ref": "#/$defs/hash" },
+    "dependencies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/dependency" }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "proofs": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": { "$ref": "#/$defs/proof" }
+    }
+  },
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "bits": {
+      "type": "string",
+      "pattern": "^0x[a-f0-9]{16}$"
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["specifier", "sourceHash"],
+      "properties": {
+        "specifier": { "type": "string" },
+        "sourceHash": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "category", "message"],
+      "properties": {
+        "code": { "type": "integer", "minimum": 0 },
+        "category": { "enum": ["warning", "error", "suggestion", "message"] },
+        "message": { "type": "string" },
+        "specifier": { "type": "string", "format": "uri" },
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 },
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "unit", "valueBits"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "numeric.literal",
+            "scalar.positive",
+            "scalar.negative",
+            "scalar.parenthesized",
+            "scalar.add",
+            "scalar.sub",
+            "scalar.mul",
+            "scalar.div",
+            "const.reference",
+            "unit.construct",
+            "unit.add",
+            "unit.sub",
+            "unit.mul",
+            "unit.div"
+          ]
+        },
+        "unit": { "type": "string" },
+        "valueBits": { "$ref": "#/$defs/bits" },
+        "name": { "type": "string" },
+        "targetStart": { "type": "integer", "minimum": 0 },
+        "targetEnd": { "type": "integer", "minimum": 0 },
+        "operand": { "$ref": "#/$defs/evidence" },
+        "left": { "$ref": "#/$defs/evidence" },
+        "right": { "$ref": "#/$defs/evidence" }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "sliceHash", "evidence", "unit", "value", "valueBits"],
+      "properties": {
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 },
+        "sliceHash": { "$ref": "#/$defs/hash" },
+        "evidence": { "$ref": "#/$defs/evidence" },
+        "unit": { "type": "string" },
+        "value": { "type": "number" },
+        "valueBits": { "$ref": "#/$defs/bits" }
+      }
+    }
+  }
+}
