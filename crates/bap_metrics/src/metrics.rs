@@ -24,10 +24,17 @@ pub struct MetricsSnapshot {
     pub heap_samples: Vec<HeapSample>,
 }
 
+#[derive(Debug)]
+struct Shared {
+    epoch: Instant,
+    cold_start_ms: f64,
+    ops: HashMap<String, OpStat>,
+    heap_samples: Vec<HeapSample>,
+}
+
 #[derive(Debug, Clone)]
 pub struct MetricsCollector {
-    started: Instant,
-    inner: Arc<Mutex<MetricsSnapshot>>,
+    inner: Arc<Mutex<Shared>>,
 }
 
 impl Default for MetricsCollector {
@@ -39,32 +46,47 @@ impl Default for MetricsCollector {
 impl MetricsCollector {
     pub fn new() -> Self {
         Self {
-            started: Instant::now(),
-            inner: Arc::new(Mutex::new(MetricsSnapshot::default())),
+            inner: Arc::new(Mutex::new(Shared {
+                epoch: Instant::now(),
+                cold_start_ms: 0.0,
+                ops: HashMap::new(),
+                heap_samples: Vec::new(),
+            })),
         }
     }
 
+    pub fn record_cold_start(&self, duration: Duration) {
+        self.inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .cold_start_ms = duration.as_secs_f64() * 1000.0;
+    }
+
     pub fn record_op(&self, name: &str, duration: Duration) {
-        let mut snap = self.inner.lock().expect("metrics lock poisoned");
-        let stat = snap.ops.entry(name.to_owned()).or_default();
+        let mut shared = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        let stat = shared.ops.entry(name.to_owned()).or_default();
         stat.calls += 1;
         stat.total_ns += duration.as_nanos();
         stat.max_ns = stat.max_ns.max(duration.as_nanos());
     }
 
     pub fn record_heap(&self, used_bytes: usize, total_bytes: usize) {
-        let mut snap = self.inner.lock().expect("metrics lock poisoned");
-        snap.heap_samples.push(HeapSample {
-            elapsed_ms: self.started.elapsed().as_millis(),
+        let mut shared = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        let elapsed_ms = shared.epoch.elapsed().as_millis();
+        shared.heap_samples.push(HeapSample {
+            elapsed_ms,
             used_bytes,
             total_bytes,
         });
     }
 
     pub fn snapshot(&self) -> MetricsSnapshot {
-        let mut snap = self.inner.lock().expect("metrics lock poisoned").clone();
-        snap.cold_start_ms = self.started.elapsed().as_secs_f64() * 1000.0;
-        snap
+        let shared = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        MetricsSnapshot {
+            cold_start_ms: shared.cold_start_ms,
+            ops: shared.ops.clone(),
+            heap_samples: shared.heap_samples.clone(),
+        }
     }
 }
 

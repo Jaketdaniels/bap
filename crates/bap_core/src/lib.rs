@@ -13,11 +13,13 @@ pub struct BapRuntime {
 impl BapRuntime {
     pub fn new(metrics: MetricsCollector) -> Self {
         let extensions = vec![bap_ops::bap::init(metrics.clone())];
+        let started = std::time::Instant::now();
         let runtime = JsRuntime::new(RuntimeOptions {
             module_loader: Some(std::rc::Rc::new(FsModuleLoader)),
             extensions,
             ..Default::default()
         });
+        metrics.record_cold_start(started.elapsed());
         Self { runtime, metrics }
     }
 
@@ -31,11 +33,14 @@ impl BapRuntime {
         Ok(())
     }
 
-    pub fn eval(&mut self, code: &str) -> Result<Value, deno_core::error::AnyError> {
+    pub fn eval(&mut self, code: &str) -> Result<Option<Value>, deno_core::error::AnyError> {
         let global = self.runtime.execute_script("<anon>", code.to_owned())?;
         deno_core::scope!(scope, self.runtime);
         let local = deno_core::v8::Local::new(scope, global);
-        Ok(serde_v8::from_v8::<Value>(scope, local)?)
+        if local.is_undefined() {
+            return Ok(None);
+        }
+        Ok(Some(serde_v8::from_v8::<Value>(scope, local)?))
     }
 
     pub fn sample_heap(&mut self) -> (usize, usize) {
@@ -53,7 +58,7 @@ mod tests {
     fn eval_returns_json_value() {
         let mut runtime = BapRuntime::new(MetricsCollector::new());
         let value = runtime.eval("1 + 1").unwrap();
-        assert_eq!(value, serde_json::json!(2));
+        assert_eq!(value, Some(serde_json::json!(2)));
     }
 
     #[test]

@@ -34,3 +34,19 @@
 
 First invocation in a fresh boot is ~20-42 ms (page-cache miss on the 30+ MB v8/dylib);
 steady-state is ~5 ms, comfortably inside the Phase 6 spec ceiling of ≤8 ms.
+
+## 2026-08-19 — post-review fixes (quality reviewers, all crates read + verified)
+
+- cold_start_ms now recorded at JsRuntime::new (was total wall time at snapshot() — conflated script
+  runtime with engine init; would poison Phase 6 benchmarks).
+- Metrics timing basis moved into the shared snapshot (epoch Instant), removing per-clone `started`
+  disagreement; lock poisoning degrades via into_inner() instead of panic.
+- bap run --metrics / --log-level accepted before OR after the subcommand (clap global = true).
+- Piped REPL exits non-zero when scripted input has eval errors (was exit 0 on failure).
+- BapRuntime::eval returns Option<Value>; undefined prints as `undefined` (Node parity), not `null`.
+- metrics-json test uses rfind('{') to tolerate script stderr noise.
+- Deferred to later phases: script args passthrough (run.rs drops _script_args), bap_core::Error newtype
+  over AnyError, REPL banner/timing-line tty-gating, is_complete brace-parsing beyond simple counting,
+  sorted pretty output, unify `bap:`/`repl error:` prefixes, deno_error pinned in workspace deps,
+  op write-error surfacing (EPIPE), #[allow(dead_code)] metrics field on BapRuntime.
+- README phase count fixed to six.

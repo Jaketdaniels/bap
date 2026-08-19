@@ -26,7 +26,8 @@ fn metrics_json_reports_console_ops() {
         .expect("spawn bap");
     assert!(out.status.success());
     let stderr = String::from_utf8(out.stderr).unwrap();
-    let start = stderr.find('{').expect("metrics json on stderr");
+    let marker = stderr.find("\"cold_start_ms\"").expect("cold_start in metrics json");
+    let start = stderr[..marker].rfind('{').expect("metrics json opening brace");
     let snap: serde_json::Value =
         serde_json::from_str(&stderr[start..]).expect("metrics json on stderr");
     assert!(snap["cold_start_ms"].as_f64().is_some());

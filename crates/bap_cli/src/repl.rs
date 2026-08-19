@@ -16,22 +16,36 @@ pub fn run(
     if std::io::stdin().is_terminal() {
         run_interactive(&mut runtime, &metrics)?;
     } else {
-        run_piped(&mut runtime, &metrics)?;
+        let errored = run_piped(&mut runtime, &metrics)?;
+        if errored {
+            return Err("scripted input contained evaluation errors".into());
+        }
     }
     report(format, &metrics.snapshot());
     Ok(())
 }
 
-fn eval_line(runtime: &mut BapRuntime, metrics: &MetricsCollector, code: &str) {
+fn eval_line(runtime: &mut BapRuntime, metrics: &MetricsCollector, code: &str) -> bool {
     let started = Instant::now();
-    match runtime.eval(code) {
-        Ok(value) => println!("{value}"),
-        Err(err) => eprintln!("{err}"),
-    }
+    let ok = match runtime.eval(code) {
+        Ok(Some(value)) => {
+            println!("{value}");
+            true
+        }
+        Ok(None) => {
+            println!("undefined");
+            true
+        }
+        Err(err) => {
+            eprintln!("{err}");
+            false
+        }
+    };
     metrics.record_op("repl.eval", started.elapsed());
     let (used, total) = runtime.sample_heap();
     metrics.record_heap(used, total);
     println!("  ~{} ms", started.elapsed().as_millis());
+    ok
 }
 
 fn is_complete(code: &str) -> bool {
@@ -70,16 +84,17 @@ fn run_interactive(runtime: &mut BapRuntime, metrics: &MetricsCollector) -> rust
     Ok(())
 }
 
-fn run_piped(runtime: &mut BapRuntime, metrics: &MetricsCollector) -> std::io::Result<()> {
+fn run_piped(runtime: &mut BapRuntime, metrics: &MetricsCollector) -> std::io::Result<bool> {
     let stdin = std::io::stdin();
+    let mut errored = false;
     for line in stdin.lock().lines() {
         let line = line?;
         if line.trim() == ".exit" {
             break;
         }
-        if !line.trim().is_empty() {
-            eval_line(runtime, metrics, &line);
+        if !line.trim().is_empty() && !eval_line(runtime, metrics, &line) {
+            errored = true;
         }
     }
-    Ok(())
+    Ok(errored)
 }

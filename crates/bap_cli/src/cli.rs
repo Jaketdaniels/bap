@@ -16,10 +16,10 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
 
-    #[arg(long, value_enum, default_value_t = MetricsFormat::Pretty)]
+    #[arg(long, global = true, value_enum, default_value_t = MetricsFormat::Pretty, help = "metrics report format")]
     pub metrics: MetricsFormat,
 
-    #[arg(long, help = "tracing filter, e.g. debug")]
+    #[arg(long, global = true, help = "tracing filter, e.g. debug")]
     pub log_level: Option<String>,
 }
 

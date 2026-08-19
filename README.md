@@ -27,7 +27,7 @@ cargo build --workspace
 
 ## Roadmap
 
-See `docs/roadmap.md` for the five-phase plan. Planning docs live in
+See `docs/roadmap.md` for the six-phase plan. Planning docs live in
 `docs/superpowers/plans/`.
 
 ## Governance
