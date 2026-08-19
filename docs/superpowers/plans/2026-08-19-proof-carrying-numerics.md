@@ -323,7 +323,7 @@ Run: `cargo test -p bap_cli --test proofs`
 
 Expected: proven addition prints `15`; inspection reports `unit.add`; mismatch exits with `TS2345`; unavailable backend plus `--no-proofs` still runs; source edits and corruption rebuild; cache hits do not relaunch Node.
 
-### Task 8: Trust gates and accurate project documentation
+### Task 8: POC quality gates and accurate project documentation
 
 **Files:**
 - Modify: `.github/workflows/ci.yml`
@@ -335,13 +335,13 @@ Expected: proven addition prints `15`; inspection reports `unit.add`; mismatch e
 - Modify: `docs/superpowers/plans/2026-08-19-bap-phase-6-tail-latency.md`
 - Modify: `Cargo.toml`
 
-- [ ] **Step 1: Add CI gates**
+- [ ] **Step 1: Keep CI strategic**
 
-Install Node dependencies with `npm --prefix tools/ts-proof ci`, run Node tests, Rust gates, and Miri only on the V8-free `bap_math` crate. Keep ASAN conditional on the future `bap_unsafe` crate; do not imply it currently runs.
+Install Node dependencies with `npm --prefix tools/ts-proof ci`, then run Node tests, formatting, clippy with warnings denied, and the Rust test suite. Do not add speculative Miri, sanitizer, release, or approval machinery during the proof-of-concept phase.
 
 - [ ] **Step 2: Correct claims and roadmap state**
 
-Describe implemented TypeScript and numerics precisely; label proof specialization AOT; report cold-start observations as warm-cache versus first invocation; replace synthetic Next.js target language with a future real-application gate; add native-addon translation and representative-corpus requirements to Phase 4. Correct the workspace repository URL or omit it until a real upstream exists.
+Describe implemented TypeScript and numerics precisely; label proof specialization AOT; report cold-start observations as warm-cache versus first invocation; replace synthetic Next.js target language with a future real-application gate; add native-addon translation and representative-corpus requirements to Phase 4. Correct the workspace repository URL or omit it until a real upstream exists. Keep JSDoc and Rust documentation comments in plain English and no longer than two lines unless an invariant requires more detail.
 
 - [ ] **Step 3: Run final verification**
 

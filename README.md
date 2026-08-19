@@ -1,11 +1,10 @@
 # Bap Runtime
 
-A TypeScript-native JavaScript runtime that makes advanced numerics and
-sub-150 ms tail latency auditable by design.
+An experimental V8-backed JavaScript runtime building toward fast TypeScript,
+error-bounded numerics, and proof-backed specialization.
 
-Phase 1 (this milestone): a small, well-instrumented JS runtime that runs one
-script and prints logs, plus a REPL, with structured logging and op-level
-metrics wired around every syscall.
+The current prototype runs ES modules and a REPL with timers, file I/O, TCP,
+fetch, structured logging, and operation-level latency metrics.
 
 ## Quick start
 
@@ -30,8 +29,7 @@ cargo build --workspace
 See `docs/roadmap.md` for the six-phase plan. Planning docs live in
 `docs/superpowers/plans/`.
 
-## Governance
+## Project practice
 
-Core engine/runtime code is human-reviewed and hand-written; AI assistance is
-confined to tests, docs, and non-critical utilities. See `CONTRIBUTING.md` and
-`docs/governance.md`.
+The proof of concept uses a compact quality gate and meaningful main-branch commits.
+See `CONTRIBUTING.md` and `docs/governance.md`.

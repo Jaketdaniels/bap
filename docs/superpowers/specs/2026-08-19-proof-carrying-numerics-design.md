@@ -116,15 +116,17 @@ with stable codes such as `BAP_NUMERIC_OVERFLOW`.
 5. Existing metrics record cache hit/miss, transpile time, proof time, numeric op
    latency, and batch size without recording source text or values.
 
-## Failure and Trust Model
+## Failure and POC Safety
 
 - Invalid numeric inputs fail closed with stable error codes.
 - Failed or unavailable proof tooling falls back to unoptimized transpilation only
   when the module has no type errors; `--require-proofs` makes failure fatal.
-- Artifacts are written to a temporary sibling and atomically renamed.
-- The cache never follows symlinks outside its configured root.
+- Artifacts are written to a temporary sibling and atomically renamed; corrupt or
+  mismatched content is treated as a cache miss.
 - All new Rust crates use `#![forbid(unsafe_code)]`; CI runs formatting, clippy,
-  unit/integration tests, and Miri on `bap_math`.
+  and focused unit and integration tests.
+- JSDoc and Rust documentation comments use plain English and stay within two lines
+  unless a public invariant cannot be expressed clearly in that space.
 - Generated proof manifests are inspectable with `bap inspect proofs <file>`.
 
 ## Verification Gates
@@ -145,7 +147,7 @@ with stable codes such as `BAP_NUMERIC_OVERFLOW`.
 
 1. **TypeScript foundation:** direct execution, source maps, artifact cache, and
    current-state documentation.
-2. **Numeric fidelity:** Rust primitives, property tests, Miri, JavaScript bindings,
+2. **Numeric fidelity:** Rust primitives, property tests, JavaScript bindings,
    and batch operations.
 3. **Proof integration:** TypeScript checker backend, proof validation,
    specialization, inspection command, and end-to-end benchmarks.
