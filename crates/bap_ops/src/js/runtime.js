@@ -80,8 +80,9 @@ bap.fetch = async (url) => {
     status: meta.status,
     ok: meta.ok,
     headers: Object.fromEntries(meta.headers),
-    text: () => decodeUtf8(body),
-    arrayBuffer: () => body,
+    text: async () => decodeUtf8(body),
+    arrayBuffer: async () =>
+      body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength),
   };
 };
 

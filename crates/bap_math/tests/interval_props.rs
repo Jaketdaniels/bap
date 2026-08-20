@@ -93,11 +93,16 @@ fn interval_rounding_contains_subnormal_and_cancellation_results() {
 }
 
 #[test]
-fn interval_overflow_remains_infinite() {
+fn interval_overflow_keeps_a_finite_inner_bound() {
     let max = Interval::new(f64::MAX, f64::MAX).unwrap();
-    let result = max.checked_add(max).unwrap();
-    assert_eq!(result.lo(), f64::INFINITY);
-    assert_eq!(result.hi(), f64::INFINITY);
+    let positive = max.checked_add(max).unwrap();
+    assert_eq!(positive.lo(), f64::MAX);
+    assert_eq!(positive.hi(), f64::INFINITY);
+
+    let min = Interval::new(-f64::MAX, -f64::MAX).unwrap();
+    let negative = min.checked_add(min).unwrap();
+    assert_eq!(negative.lo(), f64::NEG_INFINITY);
+    assert_eq!(negative.hi(), -f64::MAX);
 }
 
 fn finite_interval() -> impl Strategy<Value = Interval> {

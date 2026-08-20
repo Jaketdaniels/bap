@@ -1,4 +1,11 @@
 const res = await bap.fetch(Bap.args[0]);
 if (res.status !== 200 || !res.ok) throw new Error("bad status");
-const text = await res.text();
+const textResult = res.text();
+if (!(textResult instanceof Promise)) throw new Error("text() must return a Promise");
+const text = await textResult;
 if (text !== "bap fetch works") throw new Error("bad body: " + text);
+const bufferResult = res.arrayBuffer();
+if (!(bufferResult instanceof Promise)) throw new Error("arrayBuffer() must return a Promise");
+const buffer = await bufferResult;
+if (!(buffer instanceof ArrayBuffer)) throw new Error("arrayBuffer() must return an ArrayBuffer");
+if (buffer.byteLength !== 15) throw new Error("bad buffer length: " + buffer.byteLength);

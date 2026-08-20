@@ -68,7 +68,7 @@ fn widened(lo: f64, hi: f64) -> Result<Interval, NumericError> {
     if lo.is_nan() || hi.is_nan() {
         return Err(NumericError::Indeterminate);
     }
-    Interval::new(next_down_finite(lo), next_up_finite(hi))
+    Interval::new(next_down(lo), next_up(hi))
 }
 
 fn widened_min_max(values: [f64; 4]) -> Result<Interval, NumericError> {
@@ -92,9 +92,12 @@ fn mul_corner(lhs: f64, rhs: f64) -> f64 {
     }
 }
 
-fn next_up_finite(value: f64) -> f64 {
-    if !value.is_finite() {
+fn next_up(value: f64) -> f64 {
+    if value == f64::INFINITY {
         return value;
+    }
+    if value == f64::NEG_INFINITY {
+        return -f64::MAX;
     }
     if value == 0.0 {
         return f64::from_bits(1);
@@ -103,9 +106,12 @@ fn next_up_finite(value: f64) -> f64 {
     f64::from_bits(if value > 0.0 { bits + 1 } else { bits - 1 })
 }
 
-fn next_down_finite(value: f64) -> f64 {
-    if !value.is_finite() {
+fn next_down(value: f64) -> f64 {
+    if value == f64::NEG_INFINITY {
         return value;
+    }
+    if value == f64::INFINITY {
+        return f64::MAX;
     }
     if value == 0.0 {
         return f64::from_bits((1_u64 << 63) | 1);
