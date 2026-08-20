@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bap JavaScript and TypeScript runtime documentation.">
+  <title>Bap Runtime Docs</title>
+  <style>
+    :root { color-scheme: dark; --ink: #e7edf5; --muted: #9baabd; --panel: #121b29; --line: #26364d; --accent: #62d6c9; --accent-2: #98a8ff; --bg: #09111d; font: 16px/1.6 ui-sans-serif, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: radial-gradient(circle at top right, #172c42, var(--bg) 48%); }
+    a { color: var(--accent); }
+    .wrap { width: min(1080px, calc(100% - 40px)); margin: 0 auto; }
+    header { padding: 72px 0 44px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--accent); letter-spacing: .14em; text-transform: uppercase; font-size: .75rem; font-weight: 700; }
+    h1 { max-width: 720px; margin: 12px 0; font-size: clamp(2.6rem, 7vw, 5.8rem); line-height: .98; letter-spacing: -.06em; }
+    .lede { max-width: 660px; margin: 20px 0 28px; color: var(--muted); font-size: 1.2rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    .button { display: inline-block; padding: 10px 16px; border: 1px solid var(--accent); border-radius: 999px; text-decoration: none; color: var(--bg); background: var(--accent); font-weight: 700; }
+    .button.alt { color: var(--ink); background: transparent; border-color: var(--line); }
+    main { padding: 44px 0 72px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    section { margin: 0 0 18px; padding: 26px; border: 1px solid var(--line); border-radius: 18px; background: color-mix(in srgb, var(--panel) 88%, transparent); }
+    section.wide { grid-column: 1 / -1; }
+    h2 { margin: 0 0 12px; color: var(--accent-2); font-size: 1.35rem; }
+    p { margin: 8px 0 14px; }
+    code { padding: 2px 5px; border-radius: 5px; color: #d8e0ff; background: #1d2a40; }
+    pre { overflow: auto; margin: 14px 0 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; color: #dbe7f5; background: #07101c; }
+    footer { padding: 24px 0 48px; color: var(--muted); border-top: 1px solid var(--line); }
+    @media (max-width: 720px) { .wrap { width: min(100% - 24px, 1080px); } .grid { grid-template-columns: 1fr; } section.wide { grid-column: auto; } header { padding-top: 48px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="eyebrow">Bap runtime</div>
+      <h1>Run JavaScript and TypeScript with a small Rust core.</h1>
+      <p class="lede">Bap combines V8, a focused async runtime, source-mapped TypeScript loading, and a numeric core designed for exact boundaries.</p>
+      <div class="actions">
+        <a class="button" href="#quick-start">Run your first script</a>
+        <a class="button alt" href="../README.md">Read the README</a>
+      </div>
+    </div>
+  </header>
+  <main class="wrap">
+    <div class="grid">
+      <section id="quick-start">
+        <h2>Quick start</h2>
+        <p>Build the workspace, then run either JavaScript or TypeScript.</p>
+        <pre><code>cargo build --workspace
+target/debug/bap run examples/hello.js
+target/debug/bap run examples/hello.ts</code></pre>
+      </section>
+      <section>
+        <h2>REPL and metrics</h2>
+        <p>Use the REPL for small experiments. Keep script output clean with JSON metrics on stderr.</p>
+        <pre><code>target/debug/bap repl
+target/debug/bap --metrics json run examples/hello.ts</code></pre>
+      </section>
+      <section class="wide">
+        <h2>Runtime APIs</h2>
+        <p>The lowercase <code>bap</code> global provides file, network, and fetch helpers. Timers use the same event loop.</p>
+        <pre><code>const response = await bap.fetch("https://example.com");
+console.log(response.status, await response.text());
+
+await bap.writeFile("/tmp/output.txt", "hello from bap\n");</code></pre>
+      </section>
+      <section>
+        <h2>TypeScript loading</h2>
+        <p>Bap strips TypeScript types, keeps source maps, and caches compiled modules. A JavaScript entry can import a TypeScript dependency.</p>
+      </section>
+      <section>
+        <h2>Numeric core</h2>
+        <p><code>bap_math</code> currently lives on the Rust side. It provides outward-rounded intervals, checked integers, and <code>Fixed&lt;18,4&gt;</code> decimal arithmetic.</p>
+      </section>
+      <section>
+        <h2>Proof tool</h2>
+        <p>The standalone TypeScript proof tool checks a bounded unit-aware subset and writes JSON evidence. Runtime integration is the next slice.</p>
+        <pre><code>npm --prefix tools/ts-proof ci
+npm --prefix tools/ts-proof test</code></pre>
+      </section>
+      <section>
+        <h2>Project status</h2>
+        <p>This is a working proof of concept. Node compatibility, native add-ons, JavaScript numeric bindings, proof consumption, and real application latency tests remain on the roadmap.</p>
+        <p><a href="roadmap.md">Read the roadmap</a> · <a href="readability-audit.md">Read the readability audit</a></p>
+      </section>
+    </div>
+  </main>
+  <footer><div class="wrap">Bap documentation · Keep claims tied to code and tests.</div></footer>
+</body>
+</html>

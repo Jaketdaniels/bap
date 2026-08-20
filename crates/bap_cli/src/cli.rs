@@ -14,7 +14,7 @@ pub enum MetricsFormat {
 #[command(
     name = "bap",
     version,
-    about = "Bap Runtime: a TypeScript-native JavaScript runtime with auditable numerics"
+    about = "Bap Runtime: a V8 JavaScript and TypeScript runtime"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -32,9 +32,9 @@ pub struct Cli {
 /// Subcommands accepted by `bap`.
 #[derive(Subcommand)]
 pub enum Command {
-    /// Run a JavaScript file
+    /// Run a JavaScript or TypeScript file
     Run {
-        /// Path to the JavaScript file.
+        /// Path to a JavaScript or TypeScript file.
         file: String,
         /// Arguments passed to the script.
         #[arg(help = "arguments passed to the script")]
