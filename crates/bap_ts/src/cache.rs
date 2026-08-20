@@ -53,7 +53,7 @@ struct ArtifactV1 {
 
 impl Cache {
     pub fn new(root: impl AsRef<Path>) -> Result<Self> {
-        fs::create_dir_all(root.as_ref()).context("failed to create TypeScript cache")?;
+        prepare_root(root.as_ref())?;
         Ok(Self {
             root: root.as_ref().to_owned(),
         })
@@ -85,7 +85,7 @@ impl Cache {
         if encoded.len() as u64 > MAX_ARTIFACT_SIZE {
             bail!("TypeScript artifact exceeds 64 MiB");
         }
-        self.write_atomic(&path, &encoded)?;
+        let _ = self.write_atomic(&path, &encoded);
 
         Ok(CachedArtifact {
             path,
@@ -152,9 +152,14 @@ impl Cache {
             std::process::id()
         ));
         let write_result = (|| -> Result<()> {
-            let mut file = OpenOptions::new()
-                .write(true)
-                .create_new(true)
+            let mut options = OpenOptions::new();
+            options.write(true).create_new(true);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::OpenOptionsExt;
+                options.mode(0o600);
+            }
+            let mut file = options
                 .open(&temporary)
                 .context("failed to create temporary TypeScript artifact")?;
             file.write_all(bytes)
@@ -162,9 +167,6 @@ impl Cache {
             file.sync_all()
                 .context("failed to sync TypeScript artifact")?;
             fs::rename(&temporary, destination).context("failed to publish TypeScript artifact")?;
-            fs::File::open(&self.root)
-                .and_then(|directory| directory.sync_all())
-                .context("failed to sync TypeScript cache directory")?;
             Ok(())
         })();
         if write_result.is_err() {
@@ -172,6 +174,74 @@ impl Cache {
         }
         write_result
     }
+}
+
+fn prepare_root(root: &Path) -> Result<()> {
+    match fs::symlink_metadata(root) {
+        Ok(metadata) => validate_root(root, &metadata)?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => create_secure_dirs(root)?,
+        Err(error) => return Err(error).context("failed to inspect TypeScript cache"),
+    }
+    let metadata = fs::symlink_metadata(root).context("failed to inspect TypeScript cache")?;
+    validate_root(root, &metadata)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(root, fs::Permissions::from_mode(0o700))
+            .context("failed to secure TypeScript cache")?;
+    }
+    Ok(())
+}
+
+fn validate_root(root: &Path, metadata: &fs::Metadata) -> Result<()> {
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        bail!(
+            "TypeScript cache root is not a directory: {}",
+            root.display()
+        );
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if metadata.uid() != rustix::process::geteuid().as_raw() {
+            bail!(
+                "TypeScript cache root has a different owner: {}",
+                root.display()
+            );
+        }
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn create_secure_dirs(root: &Path) -> Result<()> {
+    use std::os::unix::fs::DirBuilderExt;
+
+    let mut missing = Vec::new();
+    let mut current = root;
+    while !current.exists() {
+        missing.push(current.to_owned());
+        current = current
+            .parent()
+            .context("TypeScript cache has no existing parent")?;
+    }
+    for directory in missing.iter().rev() {
+        fs::DirBuilder::new()
+            .mode(0o700)
+            .create(directory)
+            .with_context(|| {
+                format!(
+                    "failed to create TypeScript cache directory {}",
+                    directory.display()
+                )
+            })?;
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn create_secure_dirs(root: &Path) -> Result<()> {
+    fs::create_dir_all(root).context("failed to create TypeScript cache")
 }
 
 fn canonical_specifier(specifier: &str) -> Result<String> {
@@ -242,5 +312,52 @@ mod tests {
         let second = cache.get_or_transpile(&changed).unwrap();
         assert_ne!(second.path, first.path);
         assert!(!second.cache_hit);
+    }
+
+    #[test]
+    fn publish_failure_does_not_discard_transpiled_code() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = Cache::new(dir.path()).unwrap();
+        let first = cache.get_or_transpile(&fixture()).unwrap();
+        std::fs::remove_file(&first.path).unwrap();
+        std::fs::create_dir(&first.path).unwrap();
+
+        let second = cache.get_or_transpile(&fixture()).unwrap();
+        assert_eq!(second.code, first.code);
+        assert!(!second.cache_hit);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cache_root_and_artifacts_are_owner_only() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let parent = tempfile::tempdir().unwrap();
+        let root = parent.path().join("nested").join("cache");
+        let cache = Cache::new(&root).unwrap();
+        let artifact = cache.get_or_transpile(&fixture()).unwrap();
+        assert_eq!(
+            std::fs::metadata(&root).unwrap().permissions().mode() & 0o777,
+            0o700
+        );
+        assert_eq!(
+            std::fs::metadata(artifact.path)
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_a_symlink_cache_root() {
+        let parent = tempfile::tempdir().unwrap();
+        let actual = parent.path().join("actual");
+        let root = parent.path().join("cache");
+        std::fs::create_dir(&actual).unwrap();
+        std::os::unix::fs::symlink(actual, &root).unwrap();
+        assert!(Cache::new(root).is_err());
     }
 }

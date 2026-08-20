@@ -14,13 +14,7 @@ pub fn run_file(
     format: MetricsFormat,
     metrics: MetricsCollector,
 ) -> i32 {
-    let loader = match TsModuleLoader::new(std::env::temp_dir().join("bap-ts-cache-v1")) {
-        Ok(loader) => loader,
-        Err(error) => {
-            eprintln!("bap: load: failed to initialize TypeScript cache: {error}");
-            return 1;
-        }
-    };
+    let loader = TsModuleLoader::for_user();
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
