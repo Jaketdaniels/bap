@@ -8,6 +8,7 @@ mod config;
 mod doctor;
 mod inspect;
 mod repl;
+mod report;
 mod run;
 
 use bap_metrics::MetricsCollector;
@@ -34,7 +35,11 @@ fn main() {
             };
             match config::BapConfig::load(std::path::Path::new(".")) {
                 Ok(project) => {
-                    if project.runtime.as_deref().is_some_and(|runtime| runtime != "bap") {
+                    if project
+                        .runtime
+                        .as_deref()
+                        .is_some_and(|runtime| runtime != "bap")
+                    {
                         eprintln!("bap: bap.json declares a non-'bap' runtime");
                         std::process::exit(2);
                     }
@@ -70,6 +75,9 @@ fn main() {
         },
         cli::Command::Inspect { command } => inspect::inspect(command),
         cli::Command::Doctor { json } => doctor::doctor(json),
+        cli::Command::Report { command } => match command {
+            cli::ReportCommand::Compat { input } => report::report(input),
+        },
     };
     std::process::exit(code);
 }

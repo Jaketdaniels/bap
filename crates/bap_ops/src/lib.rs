@@ -93,6 +93,7 @@ extension!(
         "cjs.js",
         "node/path.js",
         "node/fs.js",
+        "node/assert.js",
         "node/util.js",
         "node/events.js",
         "node/buffer.js",

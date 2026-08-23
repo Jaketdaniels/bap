@@ -1,0 +1,16 @@
+{
+  "description": "Pinned compatibility corpus. Each entry runs its test.js under bap run; exit 0 counts as pass. Local packages exercise the node: shim surface with representative Node patterns; remote entries are listed disabled until the package-manager milestone lands.",
+  "packages": [
+    { "name": "tiny-path-utils", "source": "local", "script": "test.js" },
+    { "name": "event-bus", "source": "local", "script": "test.js" },
+    { "name": "byte-coder", "source": "local", "script": "test.js" },
+    { "name": "file-store", "source": "local", "script": "test.js" },
+    { "name": "str-format", "source": "local", "script": "test.js" },
+    {
+      "name": "left-pad@1.3.0",
+      "source": "npm",
+      "enabled": false,
+      "note": "requires bpm (package manager milestone)"
+    }
+  ]
+}

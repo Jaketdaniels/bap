@@ -10,6 +10,10 @@ pub(crate) struct NodeShim {
 /// The supported subset; anything else reports "not implemented on Bap".
 pub(crate) const NODE_SHIMS: &[NodeShim] = &[
     NodeShim {
+        name: "assert",
+        exports: "AssertionError,ok,fail,equal,notEqual,strictEqual,notStrictEqual,deepEqual,deepStrictEqual,throws,rejects,doesNotThrow,ifError",
+    },
+    NodeShim {
         name: "path",
         exports: "normalize,join,resolve,isAbsolute,dirname,basename,extname,relative,sep,delimiter",
     },
@@ -63,8 +67,9 @@ pub(crate) fn module_source(name: &str) -> String {
 }
 
 /// Public names of the implemented builtins, kept for adoption tooling.
-pub static IMPLEMENTED_NODE_BUILTINS: &[&str] =
-    &["path", "fs", "util", "events", "buffer", "process"];
+pub static IMPLEMENTED_NODE_BUILTINS: &[&str] = &[
+    "assert", "path", "fs", "util", "events", "buffer", "process",
+];
 
 /// Every builtin name Node reserves; members outside IMPLEMENTED report
 /// "not implemented" instead of "missing npm package".

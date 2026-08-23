@@ -54,10 +54,26 @@ pub enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// Print measured reports
+    Report {
+        #[command(subcommand)]
+        command: ReportCommand,
+    },
     /// Inspect runtime artifacts
     Inspect {
         #[command(subcommand)]
         command: InspectCommand,
+    },
+}
+
+/// Report subcommands.
+#[derive(Subcommand)]
+pub enum ReportCommand {
+    /// Summarize the npm-compatibility corpus run
+    Compat {
+        /// Path to results.json from bench/compat/run.mjs.
+        #[arg(long)]
+        input: Option<String>,
     },
 }
 

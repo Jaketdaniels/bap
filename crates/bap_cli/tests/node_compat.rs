@@ -353,3 +353,42 @@ fn bap_json_alias_resolves_for_import_and_require() {
     );
     assert_eq!(String::from_utf8_lossy(&cjs.stdout).trim(), "vendored");
 }
+
+#[test]
+fn report_compat_prints_measured_table() {
+    let dir = std::env::temp_dir().join(format!("bap_report_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let results = dir.join("results.json");
+    std::fs::write(
+        &results,
+        r#"{"generatedAt":"2026-08-23T00:00:00Z","total":2,"passed":1,"ratio":"50%",
+            "results":[{"name":"alpha","status":"passed","durationMs":3},
+                       {"name":"beta","status":"failed","durationMs":4}]}"#,
+    )
+    .unwrap();
+
+    let missing = Command::new(BIN)
+        .args([
+            "report",
+            "compat",
+            "--input",
+            dir.join("absent.json").to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn bap");
+    assert!(!missing.status.success());
+
+    let out = Command::new(BIN)
+        .args(["report", "compat", "--input", results.to_str().unwrap()])
+        .output()
+        .expect("spawn bap");
+    std::fs::remove_dir_all(&dir).ok();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("alpha"), "{stdout}");
+    assert!(stdout.contains("aggregate: 1/2 passed (50%)"), "{stdout}");
+}

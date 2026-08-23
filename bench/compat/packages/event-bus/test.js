@@ -1,0 +1,10 @@
+const { EventBus } = require("./index.js");
+const bus = new EventBus();
+let seen = [];
+const stop = bus.subscribe("tick", (n) => seen.push(n));
+bus.publish("tick", 1);
+bus.publish("tick", 2);
+stop();
+bus.publish("tick", 3);
+if (JSON.stringify(seen) !== "[1,2]") throw new Error(`events broken: ${seen}`);
+console.log("event-bus ok");
