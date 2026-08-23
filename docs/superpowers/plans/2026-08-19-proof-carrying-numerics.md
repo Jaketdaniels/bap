@@ -19,7 +19,7 @@
 - Create: `crates/bap_ts/src/cache.rs`
 - Modify: `Cargo.toml`
 
-- [ ] **Step 1: Write failing transpilation tests**
+- [x] **Step 1: Write failing transpilation tests**
 
 ```rust
 #[test]
@@ -31,17 +31,17 @@ fn strips_types_and_preserves_value_imports() {
 }
 ```
 
-- [ ] **Step 2: Verify the test fails because `bap_ts` does not exist**
+- [x] **Step 2: Verify the test fails because `bap_ts` does not exist**
 
 Run: `cargo test -p bap_ts transpile::tests -- --nocapture`
 
 Expected: package-not-found failure.
 
-- [ ] **Step 3: Add `bap_ts` and implement `deno_ast` transpilation**
+- [x] **Step 3: Add `bap_ts` and implement `deno_ast` transpilation**
 
 Use exact `deno_ast = { version = "=0.53.3", features = ["transpiling"] }`. Parse `.ts`/`.mts` with `parse_module`, emit ESM using `TranspileOptions::default()`, and request a separate source map with inline sources. JavaScript is returned byte-for-byte.
 
-- [ ] **Step 4: Write cache tests before cache implementation**
+- [x] **Step 4: Write cache tests before cache implementation**
 
 ```rust
 #[test]
@@ -55,11 +55,11 @@ fn corrupt_artifact_is_rebuilt() {
 }
 ```
 
-- [ ] **Step 5: Verify the cache test fails, then implement `ArtifactV1`**
+- [x] **Step 5: Verify the cache test fails, then implement `ArtifactV1`**
 
 Key artifacts by SHA-256 over a length-prefixed schema tag, canonical specifier, source bytes, compiler version, and stable owned options fingerprint. Validate schema, key, source hash, emitted-code hash, source-map JSON, and a 64 MiB size limit on every hit. Write with a unique sibling plus `sync_all` and atomic rename; derived filenames contain lowercase hex only.
 
-- [ ] **Step 6: Run the slice tests**
+- [x] **Step 6: Run the slice tests**
 
 Run: `cargo test -p bap_ts`
 
@@ -80,7 +80,7 @@ Expected: all transpiler and cache tests pass.
 - Create: `crates/bap_cli/tests/fixtures/ts/mixed.js`
 - Create: `examples/hello.ts`
 
-- [ ] **Step 1: Write failing loader and CLI tests**
+- [x] **Step 1: Write failing loader and CLI tests**
 
 ```rust
 #[test]
@@ -91,17 +91,17 @@ fn js_entry_imports_typescript_dependency() {
 }
 ```
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 Run: `cargo test -p bap_cli --test run_script js_entry_imports_typescript_dependency -- --exact`
 
 Expected: V8 rejects TypeScript syntax from the dependency.
 
-- [ ] **Step 3: Implement `TsModuleLoader` and reusable runtime constructor**
+- [x] **Step 3: Implement `TsModuleLoader` and reusable runtime constructor**
 
 Delegate resolution and non-TypeScript loads to `FsModuleLoader`. Transpile TypeScript, append its source map as a base64 data URL, and return `ModuleSource::new(ModuleType::JavaScript, ...)`. Add `BapRuntime::with_args_and_loader`; install `TsModuleLoader` for every CLI file run so mixed graphs work.
 
-- [ ] **Step 4: Verify TypeScript behavior**
+- [x] **Step 4: Verify TypeScript behavior**
 
 Run: `cargo test -p bap_ts --test loader && cargo test -p bap_cli --test run_script`
 
@@ -117,7 +117,7 @@ Expected: `.ts`, `.mts`, and JS-to-TS graphs execute; existing JavaScript tests 
 - Create: `crates/bap_math/tests/interval_props.rs`
 - Modify: `Cargo.toml`
 
-- [ ] **Step 1: Write constructor and edge-case tests**
+- [x] **Step 1: Write constructor and edge-case tests**
 
 ```rust
 #[test]
@@ -128,17 +128,17 @@ fn division_rejects_zero_spanning_interval() {
 }
 ```
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 Run: `cargo test -p bap_math interval -- --nocapture`
 
 Expected: package-not-found or missing-type failure.
 
-- [ ] **Step 3: Implement interval semantics**
+- [x] **Step 3: Implement interval semantics**
 
 Reject NaN and reversed bounds; accept infinities. Outward-round finite endpoints with `next_down`/`next_up`; keep overflow infinities. Return `Indeterminate` for opposing-infinity addition/subtraction, define `0 * infinity` as zero for interval corner evaluation, and return `Discontinuous` for any divisor containing signed zero.
 
-- [ ] **Step 4: Add property tests using exact rational oracles**
+- [x] **Step 4: Add property tests using exact rational oracles**
 
 ```rust
 proptest! {
@@ -151,7 +151,7 @@ proptest! {
 }
 ```
 
-- [ ] **Step 5: Run interval gates**
+- [x] **Step 5: Run interval gates**
 
 Run: `PROPTEST_CASES=256 cargo test -p bap_math interval`
 
@@ -165,7 +165,7 @@ Expected: targeted and property tests pass.
 - Create: `crates/bap_math/tests/checked_props.rs`
 - Create: `crates/bap_math/tests/fixed_props.rs`
 
-- [ ] **Step 1: Write failing boundary and decimal tests**
+- [x] **Step 1: Write failing boundary and decimal tests**
 
 ```rust
 #[test]
@@ -177,17 +177,17 @@ fn fixed_18_4_uses_total_precision_and_half_even() {
 }
 ```
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 Run: `cargo test -p bap_math fixed -- --nocapture`
 
 Expected: missing-type failure.
 
-- [ ] **Step 3: Implement checked wrappers and fixed point**
+- [x] **Step 3: Implement checked wrappers and fixed point**
 
 Use private-field `CheckedI32`/`CheckedI64` wrappers with checked add/sub/mul/div/neg. Implement `Fixed<P,S>` over `i128`, allow `1 <= P <= 18` and `S <= P`, parse strict decimal strings, round excess fractional digits half-to-even, enforce the coefficient range, and never expose a primary `f64` constructor.
 
-- [ ] **Step 4: Add arithmetic properties and run gates**
+- [x] **Step 4: Add arithmetic properties and run gates**
 
 Run: `PROPTEST_CASES=256 cargo test -p bap_math`
 
@@ -205,7 +205,7 @@ Expected: no wrapping, exact boundary enforcement, canonical display, and half-e
 - Modify: `crates/bap_ops/Cargo.toml`
 - Modify: `crates/bap_ops/src/lib.rs`
 
-- [ ] **Step 1: Write failing scalar, branding, and error tests**
+- [x] **Step 1: Write failing scalar, branding, and error tests**
 
 ```rust
 #[tokio::test]
@@ -215,21 +215,21 @@ async fn forged_interval_is_rejected() {
 }
 ```
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 Run: `cargo test -p bap_core --test numeric -- --nocapture`
 
 Expected: `bap.numeric` is undefined.
 
-- [ ] **Step 3: Implement scalar ops and frozen runtime branding**
+- [x] **Step 3: Implement scalar ops and frozen runtime branding**
 
 Map numeric-domain failures to `RangeError` with stable `code`; validation failures are `TypeError`. Build result objects in JavaScript, assign non-enumerable brands, track authentic objects in private `WeakSet`s, and freeze objects and namespace. Send raw validated fields through Rust ops.
 
-- [ ] **Step 4: Write failing batch tests, then implement one-crossing batches**
+- [x] **Step 4: Write failing batch tests, then implement one-crossing batches**
 
 Test equal lengths, maximum 1,000,000 elements, atomic overflow failure, frozen result arrays, and one recorded Rust op. Use one typed scratch buffer per call, compute into a Rust temporary, and copy results only after full success. SIMD remains excluded until it beats this scalar baseline with identical results.
 
-- [ ] **Step 5: Verify JavaScript and TypeScript surfaces**
+- [x] **Step 5: Verify JavaScript and TypeScript surfaces**
 
 Run: `cargo test -p bap_ops numeric && cargo test -p bap_core --test numeric && cargo run -p bap_cli -- run examples/numeric.ts`
 
@@ -245,7 +245,7 @@ Expected: scalar and batch APIs work, forged values fail, and errors retain stab
 - Create: `tools/ts-proof/test/proof.test.mjs`
 - Create: `tools/ts-proof/manifest.schema.json`
 
-- [ ] **Step 1: Write Node tests for the trusted helper vocabulary**
+- [x] **Step 1: Write Node tests for the trusted helper vocabulary**
 
 ```javascript
 test("rejects mismatched units with TS2345", async () => {
@@ -258,17 +258,17 @@ test("rejects mismatched units with TS2345", async () => {
 });
 ```
 
-- [ ] **Step 2: Confirm RED and pin the compiler**
+- [x] **Step 2: Confirm RED and pin the compiler**
 
 Run: `npm --prefix tools/ts-proof test`
 
 Expected: missing package/script failure. Add only exact `typescript = 7.0.2`, generate and commit the lockfile.
 
-- [ ] **Step 3: Implement the bounded proof subset**
+- [x] **Step 3: Implement the bounded proof subset**
 
 Create a strict `ts.createProgram`, include the bundled ambient declaration, run `getPreEmitDiagnostics`, and resolve helper symbols back to that declaration. Prove only top-level consts containing numeric literals, unary signs, parentheses, scalar arithmetic, const references, and trusted `unit`, `unitAdd`, `unitSub`, `unitMul`, or `unitDiv` calls. Add/sub require identical units; mul/div require `dimensionless`. Reject cycles, shadowing, division by zero, nonfinite values, depth above 64, more than 256 evidence nodes per expression, or more than 1,024 edits.
 
-- [ ] **Step 4: Emit a versioned evidence manifest and run tests**
+- [x] **Step 4: Emit a versioned evidence manifest and run tests**
 
 Store canonical specifier, SHA-256 source and dependency hashes, UTF-8 byte ranges, slice hashes, closed evidence nodes, unit name, and exact `f64::to_bits()` hex. Convert TypeScript UTF-16 offsets to UTF-8 byte offsets explicitly.
 
@@ -293,7 +293,7 @@ Expected: matching units prove; mismatches retain TypeScript diagnostics; Unicod
 - Modify: `crates/bap_cli/src/main.rs`
 - Modify: `crates/bap_cli/src/run.rs`
 
-- [ ] **Step 1: Write manifest rejection tests**
+- [x] **Step 1: Write manifest rejection tests**
 
 ```rust
 #[test]
@@ -303,21 +303,21 @@ fn rejects_overlapping_edits() {
 }
 ```
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 Run: `cargo test -p bap_ts proof:: -- --nocapture`
 
 Expected: proof modules do not exist.
 
-- [ ] **Step 3: Implement independent Rust validation**
+- [x] **Step 3: Implement independent Rust validation**
 
 Validate protocol/compiler versions, canonical specifier, source/dependency/options hashes, sorted nonoverlapping UTF-8 ranges, slice hashes, trusted AST helper nodes, evidence structure, unit rules, depth/count limits, finite values, and exact recomputed bits. Apply edits highest-offset-first with ASCII padding so byte length and source-map positions remain unchanged.
 
-- [ ] **Step 4: Implement bounded backend and proof modes**
+- [x] **Step 4: Implement bounded backend and proof modes**
 
 Use request/output files, poll `Child::try_wait`, kill after 5 seconds, and reject output over 16 MiB. `--no-proofs` never starts Node; normal mode starts it only for a proof candidate on a cache miss; `--require-proofs` fails recognized but unproven candidates. Cache hits validate dependency hashes and never launch Node.
 
-- [ ] **Step 5: Add `bap inspect proofs` and integration tests**
+- [x] **Step 5: Add `bap inspect proofs` and integration tests**
 
 Run: `cargo test -p bap_cli --test proofs`
 
@@ -335,15 +335,15 @@ Expected: proven addition prints `15`; inspection reports `unit.add`; mismatch e
 - Modify: `docs/superpowers/plans/2026-08-19-bap-phase-6-tail-latency.md`
 - Modify: `Cargo.toml`
 
-- [ ] **Step 1: Keep CI strategic**
+- [x] **Step 1: Keep CI strategic**
 
 Install Node dependencies with `npm --prefix tools/ts-proof ci`, then run Node tests, formatting, clippy with warnings denied, and the Rust test suite. Do not add speculative Miri, sanitizer, release, or approval machinery during the proof-of-concept phase.
 
-- [ ] **Step 2: Correct claims and roadmap state**
+- [x] **Step 2: Correct claims and roadmap state**
 
 Describe implemented TypeScript and numerics precisely; label proof specialization AOT; report cold-start observations as warm-cache versus first invocation; replace synthetic Next.js target language with a future real-application gate; add native-addon translation and representative-corpus requirements to Phase 4. Correct the workspace repository URL or omit it until a real upstream exists. Keep JSDoc and Rust documentation comments in plain English and no longer than two lines unless an invariant requires more detail.
 
-- [ ] **Step 3: Run final verification**
+- [x] **Step 3: Run final verification**
 
 ```sh
 npm --prefix tools/ts-proof ci
@@ -359,3 +359,18 @@ git diff --check
 ```
 
 Expected: every command exits zero; tests cover cache corruption, arithmetic boundaries, proof spoofing, and mixed module graphs; documentation contains no unqualified unimplemented claims.
+
+---
+
+## Completion note (2026-08-23)
+
+All tasks implemented. Task 5 exposed the numeric core as `bap.numeric` with
+branded frozen values, WeakSet authenticity checks, unit helpers matching the
+proof vocabulary, and one-crossing atomic batches. Task 7 added independent
+manifest revalidation (hashes, ranges, slice hashes, unit rules, exact f64 bit
+recomputation), width-preserving left-padded specialization, a 5s/16MiB-bounded
+Node backend, cache v2 with embedded manifests revalidated on hit, `--no-proofs`
+/ `--require-proofs`, and `bap inspect proofs`. Task 8 wired npm + tsc type
+checks into CI and corrected README/roadmap claims. Verified: fmt, clippy -D
+warnings, full workspace tests, ts-proof npm test, tsc type check, and the CLI
+proof fixtures.

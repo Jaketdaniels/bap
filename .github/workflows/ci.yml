@@ -13,6 +13,12 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm --prefix tools/ts-proof ci
+      - run: npm --prefix tools/ts-proof test
+      - run: ./tools/ts-proof/node_modules/.bin/tsc --noEmit crates/bap_ops/tests/types/numeric.ts
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace

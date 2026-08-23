@@ -1,9 +1,8 @@
 # Bap
 
 Bap is a small V8-based JavaScript and TypeScript runtime written in Rust. It gives
-scripts a focused runtime surface for files, timers, TCP, HTTP fetches, and metrics.
-The project is a proof of concept. The Rust numeric core and TypeScript proof tool
-are useful today; their JavaScript integration is still being built.
+scripts a focused runtime surface for files, timers, TCP, HTTP fetches, metrics,
+audited numerics, and proof-specialized constants.
 
 ## Build
 
@@ -66,26 +65,40 @@ heap samples, operation counts, and async p50/p99 measurements.
 
 ## Numeric core
 
-`bap_math` is a V8-free Rust crate. It currently provides:
+`bap.numeric` exposes the V8-free Rust core to scripts. The same namespace is
+mirrored on the capital `Bap` global for the proof vocabulary.
 
-- outward-rounded `Interval` arithmetic;
-- checked `i32` and `i64` operations;
-- `Fixed<18,4>` decimal arithmetic with half-even rounding.
+```js
+const range = bap.numeric.interval(1, 2);
+const product = bap.numeric.intervalMul(range, bap.numeric.interval(0, 10));
+console.log(product.lo, product.hi); // outward-rounded bounds
 
-Use the crate from Rust while the JavaScript bindings are under construction:
-
-```rust
-use bap_math::{Fixed18_4, Interval};
-use std::str::FromStr;
-
-let price = Fixed18_4::from_str("12.3456")?;
-let range = Interval::new(1.0, 2.0)?;
+bap.numeric.i64Add(9223372036854775806n, 1n); // exact 64-bit math
+bap.numeric.fixedAdd("12.3456", "0.0001"); // "12.3457", half-even rounding
 ```
 
-## TypeScript proof tool
+Intervals and unit values are frozen objects branded by `bap.numeric`; passing
+forged lookalikes throws `TypeError: BAP_NUMERIC_INVALID_ARGUMENT`. Numeric
+failures surface as `RangeError` with stable codes such as
+`BAP_NUMERIC_OVERFLOW` and `BAP_NUMERIC_DISCONTINUOUS`. Batch helpers
+(`intervalAddBatch`, `i64AddBatch`, ...) cross into Rust once per call and
+reject atomically on any element failure.
 
-The standalone proof tool checks a small unit-aware TypeScript subset and emits a
-JSON evidence manifest. It does not change runtime execution yet.
+## TypeScript proofs
+
+`bap run file.ts` consults the proof tool for sources that use the trusted
+`Bap.numeric.*` vocabulary. Proven constant initializers are replaced with
+folded literals before transpilation; every manifest is revalidated in Rust
+(hashes, ranges, unit rules, exact bits) before an edit is applied. Validated
+manifests are cached, so warm runs never launch Node.
+
+```sh
+target/debug/bap run --require-proofs script.ts # recognized candidates must prove
+target/debug/bap run --no-proofs script.ts      # never start the backend
+target/debug/bap inspect proofs script.ts       # report evidence (add --json)
+```
+
+The standalone tool can also be driven directly:
 
 ```sh
 npm --prefix tools/ts-proof ci
@@ -99,9 +112,9 @@ proof requests.
 
 ## What is next
 
-The next integration slice connects the numeric API to JavaScript and lets `bap run`
-validate and apply proof manifests. Node compatibility, native add-ons, real
-application latency tests, and a package manager are later milestones.
+Phase 4 connects the Node surface: a CommonJS loader, a Node-core polyfill shim,
+`bap.json` project config, and an npm-compatibility harness. Real application
+latency tests follow in Phase 5.
 
 Read the [documentation site](docs/index.html), [roadmap](docs/roadmap.md), and
 [readability audit](docs/readability-audit.md) for the current project shape.

@@ -1,15 +1,23 @@
 /**
  * Ambient types for the bap numeric surface.
- * Branded values only originate from `bap.numeric`; forged objects are rejected at runtime.
+ * The hidden brands exist at runtime as non-enumerable properties assigned by
+ * `js/numeric.js`; forged lookalikes are rejected there.
  */
 interface BapInterval {
   readonly lo: number;
   readonly hi: number;
+  readonly __bapInterval: true;
+}
+
+interface BapUnit {
+  readonly lo: number;
+  readonly hi: number;
+  readonly __bapInterval: true;
+  readonly __bapUnit: string;
 }
 
 declare namespace BapNumeric {
-  /** Runtime unit values carry a hidden tag; the tag is not part of the static shape. */
-  type Unit = BapInterval;
+  type Unit = BapUnit;
 
   function interval(lo: number, hi: number): BapInterval;
   function intervalAdd(left: BapInterval, right: BapInterval): BapInterval;

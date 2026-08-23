@@ -125,3 +125,52 @@ piped-REPL stdout purity, eval-error exit 1, sorted JSON keys.
   --metrics json shows timers.create + setTimeout + fetch.request/body + fs.writeFile with p50/p99 present
   on async ops and null on console.log/timers.create. Plan doc checkboxes all ticked + status note.
 - Tests now 40 total: 6 unit (metrics) + 2 (console) + 6 (fs) + 6 (net) + 10 async_io + 2 + 3 + 1 ignored.
+## 2026-08-23 — Phase 3 complete: numeric JS bindings + proof specialization (3 commits)
+
+- Task 5 (f7da928): bap.numeric surface. Rust ops over bap_math (interval
+  scalar+batch, i32/i64 binop+neg via opcode param, i64 add batch, fixed
+  parse/binop) map NumericError to RangeError carrying stable codes; JS-side
+  validation throws TypeError BAP_NUMERIC_INVALID_ARGUMENT. Values are frozen
+  objects with non-enumerable __bapInterval/__bapUnit tags tracked in a private
+  WeakSet — forged lookalikes rejected even when structurally identical.
+  unit/unitAdd/unitSub/unitMul/unitDiv mirror the proof vocabulary (mul/div are
+  dimensionless-only). Batches cross the boundary once and reject atomically;
+  metrics record one op per call (numeric.batch.interval.add etc).
+  deno_core op2 gotchas hit: #[number] only valid on 64-bit ints (smaller ints
+  take NO marker); #[bigint] needed on i64 returns too; tuple returns are not
+  fast-compatible; extension js files share one scope (renamed colliding const).
+  Bap global construction moved from console.js to runtime.js so both globals
+  share one frozen namespace including numeric.
+
+- Task 7 (984271b): proof validation + specialization. manifest.rs revalidates
+  everything independently of Node: protocol/compiler versions, canonical
+  specifier, source hash, single ambient dependency hash, in-bounds strictly
+  ascending nonoverlapping ranges, slice hashes, evidence-tree rules per kind
+  (const.reference must deep-equal its target proof's evidence tree), depth<=64,
+  nodes<=256, exact f64 bit recomputation bottom-up. specialize.rs formats
+  shortest-round-trip literals (Display then LowerExp fallback, bit-exactness
+  verified by reparse) left-padded with spaces to preserve byte width, applied
+  highest-offset-first. backend.rs spawns node with request/response files,
+  polls try_wait (5s kill, 16MiB cap). Cache bumped to artifact-v2 embedding the
+  validated manifest; hits revalidate hashes + evidence without launching Node.
+  Loader pipeline: candidate = source contains "Bap.numeric."; Normal soft-falls
+  back with a stderr warning, Required hard-fails (TS2345 surfaces verbatim),
+  Disabled never touches the backend. `bap inspect proofs [--json]` reports
+  proven/failed/unproven/rejected/unavailable. 10 CLI integration tests use a
+  counting-node.sh shim to prove cache hits do not relaunch Node, corruption
+  rebuilds re-prove, edits invalidate, and backend-unavailable paths behave.
+  Test gotcha: fixture() prefix doubling produced phantom "No such file";
+  dropped-tempdir log paths made shim behavior look nondeterministic — assert
+  the first run specialized before asserting relaunch counts.
+
+- Task 8 (this commit): CI gains npm ci/test for ts-proof + tsc type check of
+  crates/bap_ops/tests/types/numeric.ts against src/js/numeric.d.ts. The d.ts
+  carries the real runtime brands (__bapInterval/__bapUnit) so forged objects
+  are ill-typed, matching runtime rejection. README documents the numeric
+  surface, proof modes, and inspect command; roadmap marks Phase 3 complete;
+  plan checkboxes ticked with completion note. node_modules gitignored.
+
+Verified: cargo fmt/clippy -D warnings green, workspace tests green (20 suites),
+npm --prefix tools/ts-proof test green, tsc type check green, release-style
+smoke: run examples/numeric.ts, run --require-proofs on fold fixture prints 15,
+inspect proofs --json shows kinds ["unit.add"] units ["metre"].
