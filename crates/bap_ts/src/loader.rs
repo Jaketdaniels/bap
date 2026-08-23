@@ -3,6 +3,7 @@ use crate::cjs::{ModuleKind, PackageTypeCache, synthesize_wrapper};
 use crate::proof::backend::ProofBackend;
 use crate::proof::manifest::{ProofAssessment, assess};
 use crate::proof::{ProofMode, is_proof_candidate, specialize};
+use crate::shims::{SHIM_SCHEME, find as find_shim, module_source as shim_module_source};
 use crate::{ProofBuild, transpile};
 use base64::Engine;
 use deno_core::{
@@ -168,6 +169,18 @@ impl ModuleLoader for TsModuleLoader {
         referrer: &str,
         kind: ResolutionKind,
     ) -> ModuleResolveResponse {
+        if let Some(name) = specifier
+            .strip_prefix("node:")
+            .or_else(|| specifier.strip_prefix("bap:"))
+        {
+            return match find_shim(name) {
+                Some(_) => ModuleSpecifier::parse(&format!("{SHIM_SCHEME}://{name}"))
+                    .map_err(|error| JsErrorBox::generic(error.to_string())),
+                None => Err(JsErrorBox::generic(format!(
+                    "bap: node:{name} is not implemented on Bap"
+                ))),
+            };
+        }
         if kind != ResolutionKind::MainModule && is_bare_specifier(specifier) {
             return Err(JsErrorBox::generic(format!(
                 "bap: cannot find module '{specifier}' (npm packages are not supported on Bap yet)"
@@ -182,6 +195,16 @@ impl ModuleLoader for TsModuleLoader {
         maybe_referrer: Option<&ModuleLoadReferrer>,
         options: ModuleLoadOptions,
     ) -> ModuleLoadResponse {
+        if module_specifier.scheme() == SHIM_SCHEME {
+            let name = module_specifier.host_str().unwrap_or_default();
+            let code = shim_module_source(name);
+            return ModuleLoadResponse::Sync(Ok(ModuleSource::new(
+                ModuleType::JavaScript,
+                ModuleSourceCode::String(code.into()),
+                module_specifier,
+                None,
+            )));
+        }
         if options.requested_module_type != RequestedModuleType::None {
             return self.files.load(module_specifier, maybe_referrer, options);
         }

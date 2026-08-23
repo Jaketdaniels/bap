@@ -2,6 +2,19 @@
 // ESM files import CJS modules through globalThis.__bapCjs.load(absPath).
 
 const __bapNodeModules = {};
+// Modules served for `import ... from "node:x"` read the same registry.
+globalThis.__bapNodeModules = __bapNodeModules;
+
+// Names Node itself reserves; requested-but-missing ones report "not
+// implemented" rather than the generic npm error.
+const __bapCjsNodeBuiltins = new Set([
+  ...Object.keys(__bapNodeModules),
+  "assert", "async_hooks", "child_process", "cluster", "console", "constants",
+  "crypto", "dgram", "diagnostics_channel", "dns", "domain", "http", "http2",
+  "https", "inspector", "module", "net", "os", "perf_hooks", "punycode",
+  "querystring", "readline", "repl", "stream", "string_decoder", "sys", "timers",
+  "tls", "trace_events", "tty", "url", "v8", "vm", "worker_threads", "zlib",
+]);
 
 const __bapCjsModuleCache = new Map();
 const __bapCjsBuiltinNames = new Set(Object.keys(__bapNodeModules));
@@ -79,14 +92,17 @@ function __bapCjsResolve(request, parentDir) {
   let name = request;
   if (name.startsWith("node:")) name = name.slice(5);
   if (__bapCjsIsBare(name)) {
-    if (__bapNodeModules[name] !== undefined) return { builtin: name };
     const aliases = globalThis.__bapAliases;
     if (aliases && typeof aliases[name] === "string") {
       const mapped = aliases[name].startsWith("/")
         ? aliases[name]
         : parentDir + "/" + aliases[name];
-      const resolved = __bapCjsResolveFile(mapped) ?? __bapCjsResolveDirectory(mapped);
-      if (resolved) return resolved;
+      const aliasTarget = __bapCjsResolveFile(mapped) ?? __bapCjsResolveDirectory(mapped);
+      if (aliasTarget) return aliasTarget;
+    }
+    if (__bapNodeModules[name] !== undefined) return { builtin: name };
+    if (__bapCjsNodeBuiltins.has(name)) {
+      throw new Error(`bap: node:${name} is not implemented on Bap`);
     }
     throw new Error(
       `bap: cannot find module '${request}' (npm packages are not supported on Bap yet)`,

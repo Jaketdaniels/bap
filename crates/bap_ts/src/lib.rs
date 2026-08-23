@@ -6,6 +6,7 @@ mod cache;
 mod cjs;
 mod loader;
 pub mod proof;
+mod shims;
 mod transpile;
 
 pub use cache::{Cache, CacheInput, CachedArtifact, ProofBuild};

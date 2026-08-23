@@ -187,3 +187,12 @@ pub fn op_fs_stat_sync(
         modified_ms,
     })
 }
+
+/// Creates a directory (and parents) synchronously.
+#[op2(fast)]
+pub fn op_fs_make_dir_sync(state: &mut OpState, #[string] path: String) -> Result<(), JsErrorBox> {
+    let started = Instant::now();
+    std::fs::create_dir_all(&path).map_err(|e| io_err(&path, e))?;
+    record_op(state, "fs.mkdirSync", started);
+    Ok(())
+}
