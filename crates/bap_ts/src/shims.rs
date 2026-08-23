@@ -35,7 +35,7 @@ pub(crate) const NODE_SHIMS: &[NodeShim] = &[
     },
     NodeShim {
         name: "process",
-        exports: "env,argv,cwd,exit,nextTick,version,versions,platform,arch",
+        exports: "env,argv,cwd,exit,nextTick,stdout,version,versions,platform,arch",
     },
 ];
 

@@ -13,6 +13,13 @@ __bapNodeModules.process = (() => {
       cwd: () => Deno.core.ops.op_process_cwd(),
       exit: (code = 0) => Deno.core.ops.op_process_exit(code),
       nextTick: (fn, ...args) => queueMicrotask(() => fn(...args)),
+      stdout: {
+        // Exact-byte writes; console ops always append a newline.
+        write: (text) => {
+          Deno.core.print(String(text));
+          return true;
+        },
+      },
       version: "v22.0.0-bap",
       versions: { node: "22.0.0", bap: "0.1.0" },
       ...Deno.core.ops.op_process_info(),

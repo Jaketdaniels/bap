@@ -49,6 +49,9 @@ bap.fetch = async (url) => {
     status: meta.status,
     ok: meta.ok,
     headers: Object.fromEntries(meta.headers),
+    async json() {
+      return JSON.parse(decodeUtf8(body));
+    },
     text: async () => decodeUtf8(body),
     arrayBuffer: async () =>
       body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength),
@@ -58,6 +61,7 @@ bap.fetch = async (url) => {
 bap.numeric = numericNamespace;
 
 globalThis.bap = Object.freeze(bap);
+globalThis.fetch = bap.fetch;
 globalThis.Bap = Object.freeze({
   args: Deno.core.ops.op_bap_args(),
   numeric: numericNamespace,

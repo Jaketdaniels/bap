@@ -81,7 +81,9 @@ fn looks_like_esm(source: &str) -> bool {
     for line in source.lines() {
         let trimmed = line.trim_start();
         let after_comments = trimmed.trim_start_matches([';', '}']);
-        if after_comments.starts_with("import ")
+        if after_comments.starts_with("await ")
+            || after_comments.starts_with("await(")
+            || after_comments.starts_with("import ")
             || after_comments.starts_with("import{")
             || after_comments.starts_with("import*")
             || after_comments.starts_with("import\"")
@@ -255,6 +257,10 @@ mod tests {
 
     #[test]
     fn import_and_export_markers_mean_esm() {
+        assert_eq!(
+            classify(Path::new("/x/a.js"), "const v = await load();\n"),
+            ModuleKind::Esm
+        );
         assert_eq!(
             classify(Path::new("/x/a.js"), "import { join } from './y.js';\n"),
             ModuleKind::Esm
