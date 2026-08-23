@@ -1,4 +1,5 @@
 use crate::cache::{Cache, CacheInput, CachedArtifact};
+use crate::cjs::{ModuleKind, PackageTypeCache, synthesize_wrapper};
 use crate::proof::backend::ProofBackend;
 use crate::proof::manifest::{ProofAssessment, assess};
 use crate::proof::{ProofMode, is_proof_candidate, specialize};
@@ -15,12 +16,13 @@ use std::path::{Path, PathBuf};
 const NO_BACKEND_MESSAGE: &str =
     "no Node proof tool found; set BAP_TS_PROOF_TOOL to tools/ts-proof/proof.mjs";
 
-/// Loads local module graphs and transpiles TypeScript modules.
+/// Loads local module graphs, transpiles TypeScript modules, and wraps CommonJS.
 pub struct TsModuleLoader {
     cache_root: Option<PathBuf>,
     files: FsModuleLoader,
     proof_mode: ProofMode,
     backend: Option<ProofBackend>,
+    package_types: PackageTypeCache,
 }
 
 impl TsModuleLoader {
@@ -30,6 +32,7 @@ impl TsModuleLoader {
             files: FsModuleLoader,
             proof_mode: ProofMode::Normal,
             backend: ProofBackend::discover(),
+            package_types: PackageTypeCache::default(),
         })
     }
 
@@ -47,6 +50,7 @@ impl TsModuleLoader {
             files: FsModuleLoader,
             proof_mode: ProofMode::Normal,
             backend: ProofBackend::discover(),
+            package_types: PackageTypeCache::default(),
         }
     }
 
@@ -164,6 +168,11 @@ impl ModuleLoader for TsModuleLoader {
         referrer: &str,
         kind: ResolutionKind,
     ) -> ModuleResolveResponse {
+        if kind != ResolutionKind::MainModule && is_bare_specifier(specifier) {
+            return Err(JsErrorBox::generic(format!(
+                "bap: cannot find module '{specifier}' (npm packages are not supported on Bap yet)"
+            )));
+        }
         self.files.resolve(specifier, referrer, kind)
     }
 
@@ -173,12 +182,54 @@ impl ModuleLoader for TsModuleLoader {
         maybe_referrer: Option<&ModuleLoadReferrer>,
         options: ModuleLoadOptions,
     ) -> ModuleLoadResponse {
-        if !is_typescript(module_specifier)
-            || options.requested_module_type != RequestedModuleType::None
-        {
+        if options.requested_module_type != RequestedModuleType::None {
             return self.files.load(module_specifier, maybe_referrer, options);
         }
+        if is_typescript(module_specifier) {
+            return self.load_typescript(module_specifier);
+        }
+        self.load_plain(module_specifier)
+    }
+}
 
+fn is_bare_specifier(specifier: &str) -> bool {
+    !specifier.starts_with("./")
+        && !specifier.starts_with("../")
+        && !specifier.starts_with('/')
+        && ModuleSpecifier::parse(specifier).is_err()
+}
+
+impl TsModuleLoader {
+    /// Serves `.js`/`.cjs` sources, wrapping CommonJS into synthetic ESM.
+    fn load_plain(&self, module_specifier: &ModuleSpecifier) -> ModuleLoadResponse {
+        let result = (|| {
+            let path = module_specifier
+                .to_file_path()
+                .map_err(|_| JsErrorBox::type_error("modules must use file URLs"))?;
+            let source = std::fs::read_to_string(&path).map_err(|error| {
+                JsErrorBox::generic(format!("failed to read {}: {error}", path.display()))
+            })?;
+            let code = match path.extension().and_then(|extension| extension.to_str()) {
+                Some("js" | "cjs")
+                    if self.package_types.classify_cached(&path, &source)
+                        == ModuleKind::CommonJs =>
+                {
+                    synthesize_wrapper(&path, &source)
+                }
+                _ => source,
+            };
+            Ok(ModuleSource::new(
+                ModuleType::JavaScript,
+                ModuleSourceCode::String(code.into()),
+                module_specifier,
+                None,
+            ))
+        })();
+        ModuleLoadResponse::Sync(result)
+    }
+
+    /// Runs the TypeScript pipeline: proof specialization plus the artifact cache.
+    fn load_typescript(&self, module_specifier: &ModuleSpecifier) -> ModuleLoadResponse {
         let result = (|| {
             let path = module_specifier
                 .to_file_path()

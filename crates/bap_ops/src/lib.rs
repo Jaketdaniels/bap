@@ -11,7 +11,10 @@ mod numeric;
 mod timers;
 pub use console::{op_bap_args, op_console_error, op_console_log, op_console_warn};
 pub use fetch::{FetchState, op_fetch, op_fetch_body};
-pub use fs::{op_fs_read_dir, op_fs_read_file, op_fs_stat, op_fs_write_file};
+pub use fs::{
+    op_fs_exists_sync, op_fs_read_dir, op_fs_read_dir_sync, op_fs_read_file, op_fs_read_file_sync,
+    op_fs_stat, op_fs_stat_sync, op_fs_write_file, op_fs_write_file_sync,
+};
 pub use net::{
     op_net_accept, op_net_close, op_net_close_listener, op_net_connect, op_net_listen, op_net_read,
     op_net_write,
@@ -42,6 +45,11 @@ extension!(
         op_fs_write_file,
         op_fs_read_dir,
         op_fs_stat,
+        op_fs_read_file_sync,
+        op_fs_write_file_sync,
+        op_fs_exists_sync,
+        op_fs_read_dir_sync,
+        op_fs_stat_sync,
         op_net_listen,
         op_net_accept,
         op_net_connect,
@@ -68,7 +76,7 @@ extension!(
         op_numeric_fixed_parse,
         op_numeric_fixed_binop
     ],
-    js = [dir "src/js", "console.js", "numeric.js", "runtime.js"],
+    js = [dir "src/js", "console.js", "encoding.js", "numeric.js", "cjs.js", "runtime.js"],
     options = { metrics: MetricsCollector, args: Vec<String> },
     state = |state, config| {
         state.put(config.metrics);

@@ -1,6 +1,7 @@
 //! File I/O ops backed by tokio::fs, exposed as JS promises.
+//! Sync variants back the CJS loader and the node:fs shim.
 
-use super::metrics::record_op_async;
+use super::metrics::{record_op, record_op_async};
 use deno_core::JsBuffer;
 use deno_core::OpState;
 use deno_core::op2;
@@ -102,6 +103,85 @@ pub async fn op_fs_stat(
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
     record_op_async(&state.borrow(), "fs.stat", started);
+    Ok(FileStat {
+        size: meta.len(),
+        modified_ms,
+    })
+}
+
+/// Reads a file's bytes synchronously; backs `require` and `fs.readFileSync`.
+#[op2]
+#[buffer]
+pub fn op_fs_read_file_sync(
+    state: &mut OpState,
+    #[string] path: String,
+) -> Result<Vec<u8>, JsErrorBox> {
+    let started = Instant::now();
+    let data = std::fs::read(&path).map_err(|e| io_err(&path, e))?;
+    record_op(state, "fs.readFileSync", started);
+    Ok(data)
+}
+
+/// Writes `data` to `path` synchronously.
+#[op2]
+pub fn op_fs_write_file_sync(
+    state: &mut OpState,
+    #[string] path: String,
+    #[buffer] data: JsBuffer,
+) -> Result<(), JsErrorBox> {
+    let started = Instant::now();
+    std::fs::write(&path, &data).map_err(|e| io_err(&path, e))?;
+    record_op(state, "fs.writeFileSync", started);
+    Ok(())
+}
+
+/// Reports whether a path exists synchronously.
+#[op2(fast)]
+pub fn op_fs_exists_sync(state: &mut OpState, #[string] path: String) -> bool {
+    let started = Instant::now();
+    let exists = std::fs::symlink_metadata(&path).is_ok();
+    record_op(state, "fs.existsSync", started);
+    exists
+}
+
+/// Lists a directory synchronously into `{name, isFile, isDir}` entries.
+#[op2]
+#[serde]
+pub fn op_fs_read_dir_sync(
+    state: &mut OpState,
+    #[string] path: String,
+) -> Result<Vec<DirEntry>, JsErrorBox> {
+    let started = Instant::now();
+    let mut out = Vec::new();
+    for entry in std::fs::read_dir(&path).map_err(|e| io_err(&path, e))? {
+        let entry = entry.map_err(|e| io_err(&path, e))?;
+        let ty = entry.file_type().map_err(|e| io_err(&path, e))?;
+        out.push(DirEntry {
+            name: entry.file_name().to_string_lossy().into_owned(),
+            is_file: ty.is_file(),
+            is_dir: ty.is_dir(),
+        });
+    }
+    record_op(state, "fs.readDirSync", started);
+    Ok(out)
+}
+
+/// Stats a path synchronously into `{size, modifiedMs}`.
+#[op2]
+#[serde]
+pub fn op_fs_stat_sync(
+    state: &mut OpState,
+    #[string] path: String,
+) -> Result<FileStat, JsErrorBox> {
+    let started = Instant::now();
+    let meta = std::fs::metadata(&path).map_err(|e| io_err(&path, e))?;
+    let modified_ms = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    record_op(state, "fs.statSync", started);
     Ok(FileStat {
         size: meta.len(),
         modified_ms,
