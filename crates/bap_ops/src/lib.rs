@@ -10,7 +10,7 @@ mod net;
 mod numeric;
 mod process;
 mod timers;
-pub use console::{op_bap_args, op_console_error, op_console_log, op_console_warn};
+pub use console::{op_bap_aliases, op_bap_args, op_console_error, op_console_log, op_console_warn};
 pub use fetch::{FetchState, op_fetch, op_fetch_body};
 pub use fs::{
     op_fs_exists_sync, op_fs_make_dir_sync, op_fs_read_dir, op_fs_read_dir_sync, op_fs_read_file,
@@ -32,6 +32,7 @@ pub use timers::{op_timer_clear, op_timer_create, op_timer_set_timeout};
 
 use bap_metrics::MetricsCollector;
 use deno_core::extension;
+use std::collections::BTreeMap;
 
 extension!(
     bap,
@@ -53,6 +54,7 @@ extension!(
         op_fs_read_dir_sync,
         op_fs_stat_sync,
         op_fs_make_dir_sync,
+        op_bap_aliases,
         op_process_env,
         op_process_cwd,
         op_process_exit,
@@ -97,10 +99,11 @@ extension!(
         "node/process.js",
         "runtime.js"
     ],
-    options = { metrics: MetricsCollector, args: Vec<String> },
+    options = { metrics: MetricsCollector, args: Vec<String>, aliases: BTreeMap<String, String> },
     state = |state, config| {
         state.put(config.metrics);
         state.put(config.args);
+        state.put(config.aliases);
         state.put(timers::TimerState::default());
         state.put(net::NetState::default());
         state.put(fetch::FetchState::default());
@@ -119,7 +122,7 @@ mod tests {
         args: Vec<String>,
         code: &str,
     ) -> Result<(), deno_core::error::AnyError> {
-        let extensions = vec![bap::init(metrics.clone(), args)];
+        let extensions = vec![bap::init(metrics.clone(), args, Default::default())];
         let mut runtime = JsRuntime::new(RuntimeOptions {
             extensions,
             ..Default::default()

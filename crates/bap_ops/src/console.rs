@@ -48,3 +48,17 @@ pub fn op_console_warn(state: &mut OpState, #[string] msg: String) -> Result<(),
 pub fn op_bap_args(state: &mut OpState) -> Vec<String> {
     state.borrow::<Vec<String>>().clone()
 }
+
+/// Returns the configured module aliases as `{name: target}` pairs.
+#[op2]
+#[serde]
+pub fn op_bap_aliases(state: &mut OpState) -> Vec<(String, String)> {
+    let started = Instant::now();
+    let aliases: Vec<(String, String)> = state
+        .borrow::<std::collections::BTreeMap<String, String>>()
+        .iter()
+        .map(|(name, target)| (name.clone(), target.clone()))
+        .collect();
+    super::metrics::record_op(state, "bap.aliases", started);
+    aliases
+}

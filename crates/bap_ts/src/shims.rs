@@ -61,3 +61,73 @@ pub(crate) fn module_source(name: &str) -> String {
     }
     code
 }
+
+/// Public names of the implemented builtins, kept for adoption tooling.
+pub static IMPLEMENTED_NODE_BUILTINS: &[&str] =
+    &["path", "fs", "util", "events", "buffer", "process"];
+
+/// Every builtin name Node reserves; members outside IMPLEMENTED report
+/// "not implemented" instead of "missing npm package".
+pub static KNOWN_NODE_BUILTINS: &[&str] = &[
+    "assert",
+    "async_hooks",
+    "buffer",
+    "child_process",
+    "cluster",
+    "console",
+    "constants",
+    "crypto",
+    "dgram",
+    "diagnostics_channel",
+    "dns",
+    "domain",
+    "events",
+    "fs",
+    "http",
+    "http2",
+    "https",
+    "inspector",
+    "module",
+    "net",
+    "os",
+    "path",
+    "perf_hooks",
+    "process",
+    "punycode",
+    "querystring",
+    "readline",
+    "repl",
+    "stream",
+    "string_decoder",
+    "sys",
+    "timers",
+    "tls",
+    "trace_events",
+    "tty",
+    "url",
+    "util",
+    "v8",
+    "vm",
+    "worker_threads",
+    "zlib",
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn public_builtin_list_matches_registry() {
+        let registry: Vec<&'static str> = NODE_SHIMS.iter().map(|shim| shim.name).collect();
+        assert_eq!(registry, IMPLEMENTED_NODE_BUILTINS.to_vec());
+    }
+
+    #[test]
+    fn every_implemented_builtin_is_known() {
+        assert!(
+            IMPLEMENTED_NODE_BUILTINS
+                .iter()
+                .all(|name| KNOWN_NODE_BUILTINS.contains(name))
+        );
+    }
+}

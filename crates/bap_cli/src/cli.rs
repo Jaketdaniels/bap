@@ -48,6 +48,12 @@ pub enum Command {
     },
     /// Start an interactive REPL
     Repl,
+    /// Diagnose a project's compatibility with Bap
+    Doctor {
+        /// Print machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
     /// Inspect runtime artifacts
     Inspect {
         #[command(subcommand)]

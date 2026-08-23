@@ -174,11 +174,19 @@ pub struct PackageTypeCache {
 }
 
 impl PackageTypeCache {
-    pub fn classify_cached(&self, path: &Path, source: &str) -> ModuleKind {
+    pub fn classify_cached(
+        &self,
+        path: &Path,
+        source: &str,
+        forced: Option<ModuleKind>,
+    ) -> ModuleKind {
         match path.extension().and_then(|extension| extension.to_str()) {
             Some("cjs") => return ModuleKind::CommonJs,
             Some("mjs" | "mts" | "ts") => return ModuleKind::Esm,
             _ => {}
+        }
+        if let Some(kind) = forced {
+            return kind;
         }
         let directory = path.parent().map(Path::to_path_buf).unwrap_or_default();
         let package_type = *self

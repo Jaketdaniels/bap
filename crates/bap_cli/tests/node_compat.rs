@@ -246,3 +246,110 @@ fn unimplemented_builtins_report_clearly() {
         "stderr was: {stderr}"
     );
 }
+
+fn workspace_bin() -> &'static str {
+    BIN
+}
+
+#[test]
+fn doctor_reports_supported_missing_and_gaps() {
+    let dir = std::env::temp_dir().join(format!("bap_doctor_{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("bap.json"),
+        r#"{ "runtime": "bap", "aliases": { "mylib": "./src/mylib.js" } }"#,
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/app.js"),
+        "import { join } from 'node:path';\nimport helper from 'mylib';\nconsole.log(typeof join);\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/legacy.cjs"),
+        "require('fs');\nrequire('node:crypto');\nrequire('lodash');\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("src/mylib.js"), "export default {};\n").unwrap();
+
+    let out = Command::new(workspace_bin())
+        .arg("doctor")
+        .current_dir(&dir)
+        .output()
+        .expect("spawn bap");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(out.status.success(), "{stdout}");
+    assert!(stdout.contains("supported        node:path"), "{stdout}");
+    assert!(stdout.contains("supported        node:fs"), "{stdout}");
+    assert!(stdout.contains("NOT IMPLEMENTED  node:crypto"), "{stdout}");
+    assert!(stdout.contains("missing          lodash"), "{stdout}");
+
+    let json_out = Command::new(BIN)
+        .args(["doctor", "--json"])
+        .current_dir(&dir)
+        .output()
+        .expect("spawn bap");
+    std::fs::remove_dir_all(&dir).ok();
+    assert!(json_out.status.success());
+    let report: serde_json::Value = serde_json::from_slice(&json_out.stdout).unwrap();
+    assert_eq!(report["dependencies"], 5);
+    assert_eq!(report["supported"], 3);
+}
+
+#[test]
+fn bap_json_alias_resolves_for_import_and_require() {
+    let dir = std::env::temp_dir().join(format!("bap_alias_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("bap.json"),
+        r#"{ "runtime": "bap", "aliases": { "vendor-util": "./vendor/util.cjs" } }"#,
+    )
+    .unwrap();
+    std::fs::create_dir_all(dir.join("vendor")).unwrap();
+    std::fs::write(
+        dir.join("vendor/util.cjs"),
+        "exports.tag = () => 'vendored';\n",
+    )
+    .unwrap();
+
+    let entry = dir.join("entry.mjs");
+    std::fs::write(
+        &entry,
+        "import { tag } from 'vendor-util';\nif (tag() !== 'vendored') throw new Error('bad tag');\nconsole.log(tag());\n",
+    )
+    .unwrap();
+
+    let driver = dir.join("driver.cjs");
+    std::fs::write(
+        &driver,
+        "const util = require('vendor-util');\nconsole.log(util.tag());\n",
+    )
+    .unwrap();
+
+    let cache = tempfile::tempdir().unwrap();
+    let esm = Command::new(BIN)
+        .args(["run", entry.to_str().unwrap()])
+        .env("BAP_TS_CACHE_DIR", cache.path())
+        .current_dir(&dir)
+        .output()
+        .expect("spawn bap");
+    let cjs = Command::new(BIN)
+        .args(["run", "driver.cjs"])
+        .env("BAP_TS_CACHE_DIR", cache.path())
+        .current_dir(&dir)
+        .output()
+        .expect("spawn bap");
+    std::fs::remove_dir_all(&dir).ok();
+    assert!(
+        esm.status.success(),
+        "{}",
+        String::from_utf8_lossy(&esm.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&esm.stdout).trim(), "vendored");
+    assert!(
+        cjs.status.success(),
+        "{}",
+        String::from_utf8_lossy(&cjs.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&cjs.stdout).trim(), "vendored");
+}

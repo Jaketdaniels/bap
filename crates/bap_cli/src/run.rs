@@ -3,26 +3,43 @@
 use crate::cli::MetricsFormat;
 use bap_core::BapRuntime;
 use bap_metrics::{MetricsCollector, MetricsSnapshot};
-use bap_ts::{ProofMode, TsModuleLoader};
+use bap_ts::{ModuleKind, TsModuleLoader};
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
-/// Runs the file at `path` with `script_args` and returns the process exit code.
-/// Reports the snapshot to stderr on success and `bap: {error}` on failure.
+/// Runs the file at `path` and returns the process exit code.
 pub fn run_file(
     path: &str,
     script_args: Vec<String>,
-    proof_mode: ProofMode,
+    loader: TsModuleLoader,
+    require_aliases: BTreeMap<String, String>,
+    format_override: Option<ModuleKind>,
     format: MetricsFormat,
     metrics: MetricsCollector,
 ) -> i32 {
-    let loader = TsModuleLoader::for_user().with_proof_mode(proof_mode);
+    let _ = format_override; // classification happens inside the loader
+    execute(path, script_args, loader, require_aliases, format, metrics)
+}
+
+fn execute(
+    path: &str,
+    script_args: Vec<String>,
+    loader: TsModuleLoader,
+    require_aliases: BTreeMap<String, String>,
+    format: MetricsFormat,
+    metrics: MetricsCollector,
+) -> i32 {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .expect("failed to build tokio runtime");
     let result = rt.block_on(async {
-        let mut runtime =
-            BapRuntime::with_args_and_loader(metrics.clone(), script_args, Rc::new(loader));
+        let mut runtime = BapRuntime::with_args_loader_aliases(
+            metrics.clone(),
+            script_args,
+            Rc::new(loader),
+            require_aliases,
+        );
         let result = runtime.run_script(path).await;
         let (used, total) = runtime.sample_heap();
         metrics.record_heap(used, total);

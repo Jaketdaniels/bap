@@ -144,6 +144,7 @@ dependencies = [
  "bap_ts",
  "clap",
  "rustyline",
+ "serde",
  "serde_json",
  "tempfile",
  "tokio",

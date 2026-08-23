@@ -35,7 +35,17 @@ impl BapRuntime {
         args: Vec<String>,
         module_loader: std::rc::Rc<dyn ModuleLoader>,
     ) -> Self {
-        let extensions = vec![bap_ops::bap::init(metrics.clone(), args)];
+        Self::with_args_loader_aliases(metrics, args, module_loader, Default::default())
+    }
+
+    /// Creates a runtime that also exposes `aliases` to the require surface.
+    pub fn with_args_loader_aliases(
+        metrics: MetricsCollector,
+        args: Vec<String>,
+        module_loader: std::rc::Rc<dyn ModuleLoader>,
+        aliases: std::collections::BTreeMap<String, String>,
+    ) -> Self {
+        let extensions = vec![bap_ops::bap::init(metrics.clone(), args, aliases)];
         let started = std::time::Instant::now();
         let runtime = JsRuntime::new(RuntimeOptions {
             module_loader: Some(module_loader),

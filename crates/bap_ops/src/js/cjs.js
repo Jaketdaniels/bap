@@ -88,15 +88,27 @@ function __bapCjsResolveDirectory(directory) {
   return null;
 }
 
+// Alias targets resolve against the process working directory, matching the
+// ESM loader's behavior; populated lazily from the extension config.
+let __bapAliasesLoaded = false;
+
+function __bapCjsAliases() {
+  if (!__bapAliasesLoaded) {
+    __bapAliasesLoaded = true;
+    globalThis.__bapAliases = Object.fromEntries(Deno.core.ops.op_bap_aliases());
+  }
+  return globalThis.__bapAliases || {};
+}
+
 function __bapCjsResolve(request, parentDir) {
   let name = request;
   if (name.startsWith("node:")) name = name.slice(5);
   if (__bapCjsIsBare(name)) {
-    const aliases = globalThis.__bapAliases;
+    const aliases = __bapCjsAliases();
     if (aliases && typeof aliases[name] === "string") {
       const mapped = aliases[name].startsWith("/")
         ? aliases[name]
-        : parentDir + "/" + aliases[name];
+        : Deno.core.ops.op_process_cwd() + "/" + aliases[name];
       const aliasTarget = __bapCjsResolveFile(mapped) ?? __bapCjsResolveDirectory(mapped);
       if (aliasTarget) return aliasTarget;
     }

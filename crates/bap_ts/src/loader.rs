@@ -12,6 +12,7 @@ use deno_core::{
     RequestedModuleType, ResolutionKind,
 };
 use deno_error::JsErrorBox;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 const NO_BACKEND_MESSAGE: &str =
@@ -24,6 +25,8 @@ pub struct TsModuleLoader {
     proof_mode: ProofMode,
     backend: Option<ProofBackend>,
     package_types: PackageTypeCache,
+    aliases: BTreeMap<String, PathBuf>,
+    format_override: Option<ModuleKind>,
 }
 
 impl TsModuleLoader {
@@ -34,7 +37,28 @@ impl TsModuleLoader {
             proof_mode: ProofMode::Normal,
             backend: ProofBackend::discover(),
             package_types: PackageTypeCache::default(),
+            aliases: BTreeMap::new(),
+            format_override: None,
         })
+    }
+
+    /// Maps bare specifiers onto local files; values resolve from `base`.
+    pub fn with_aliases(mut self, base: &Path, aliases: &BTreeMap<String, String>) -> Self {
+        for (name, target) in aliases {
+            let path = if Path::new(target).is_absolute() {
+                PathBuf::from(target)
+            } else {
+                base.join(target)
+            };
+            self.aliases.insert(name.clone(), path);
+        }
+        self
+    }
+
+    /// Forces `.js` classification regardless of markers.
+    pub fn with_format_override(mut self, kind: ModuleKind) -> Self {
+        self.format_override = Some(kind);
+        self
     }
 
     /// Uses an override or the current user's platform cache directory.
@@ -52,6 +76,8 @@ impl TsModuleLoader {
             proof_mode: ProofMode::Normal,
             backend: ProofBackend::discover(),
             package_types: PackageTypeCache::default(),
+            aliases: BTreeMap::new(),
+            format_override: None,
         }
     }
 
@@ -181,6 +207,12 @@ impl ModuleLoader for TsModuleLoader {
                 ))),
             };
         }
+        if let Some(path) = self.alias_target(specifier) {
+            let url = deno_core::ModuleSpecifier::from_file_path(path).map_err(|_| {
+                JsErrorBox::generic(format!("bap: alias '{specifier}' is not a valid path"))
+            })?;
+            return Ok(url);
+        }
         if kind != ResolutionKind::MainModule && is_bare_specifier(specifier) {
             return Err(JsErrorBox::generic(format!(
                 "bap: cannot find module '{specifier}' (npm packages are not supported on Bap yet)"
@@ -215,6 +247,13 @@ impl ModuleLoader for TsModuleLoader {
     }
 }
 
+impl TsModuleLoader {
+    fn alias_target(&self, specifier: &str) -> Option<PathBuf> {
+        let path = self.aliases.get(specifier)?;
+        std::fs::canonicalize(path).ok()
+    }
+}
+
 fn is_bare_specifier(specifier: &str) -> bool {
     !specifier.starts_with("./")
         && !specifier.starts_with("../")
@@ -234,7 +273,9 @@ impl TsModuleLoader {
             })?;
             let code = match path.extension().and_then(|extension| extension.to_str()) {
                 Some("js" | "cjs")
-                    if self.package_types.classify_cached(&path, &source)
+                    if self
+                        .package_types
+                        .classify_cached(&path, &source, self.format_override)
                         == ModuleKind::CommonJs =>
                 {
                     synthesize_wrapper(&path, &source)
