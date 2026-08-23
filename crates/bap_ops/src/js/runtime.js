@@ -10,6 +10,14 @@ function clearTimeout(id) {
   Deno.core.ops.op_timer_clear(id);
 }
 
+if (typeof globalThis.performance === "undefined") {
+  const originNs = Deno.core.ops.op_performance_now_ns();
+  globalThis.performance = {
+    timeOrigin: originNs,
+    now: () => (Deno.core.ops.op_performance_now_ns() - originNs) / 1e6,
+  };
+}
+
 const numericNamespace = globalThis.__bapNumeric;
 delete globalThis.__bapNumeric;
 

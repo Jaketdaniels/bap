@@ -136,6 +136,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be5eb007b7cacc6c660343e96f650fedf4b5a77512399eb952ca6642cf8d13f7"
 
 [[package]]
+name = "bap_bench"
+version = "0.1.0"
+dependencies = [
+ "bap_core",
+ "bap_metrics",
+ "bap_ts",
+ "deno_core",
+ "hdrhistogram",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "bap_cli"
 version = "0.1.0"
 dependencies = [

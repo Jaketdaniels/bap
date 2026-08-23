@@ -2,6 +2,7 @@
 
 #![forbid(unsafe_code)]
 
+mod clock;
 mod console;
 mod fetch;
 mod fs;
@@ -10,6 +11,7 @@ mod net;
 mod numeric;
 mod process;
 mod timers;
+pub use clock::op_performance_now_ns;
 pub use console::{op_bap_aliases, op_bap_args, op_console_error, op_console_log, op_console_warn};
 pub use fetch::{FetchState, op_fetch, op_fetch_body};
 pub use fs::{
@@ -55,6 +57,7 @@ extension!(
         op_fs_stat_sync,
         op_fs_make_dir_sync,
         op_bap_aliases,
+        op_performance_now_ns,
         op_process_env,
         op_process_cwd,
         op_process_exit,
