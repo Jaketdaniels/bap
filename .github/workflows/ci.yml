@@ -48,3 +48,14 @@ jobs:
         run: |
           BAP_BIN=target/debug/bap node bench/compat/run.mjs
           target/debug/bap report compat
+
+  bench-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p bap_cli
+      - name: 20-iteration smoke benchmark (report-only)
+        run: |
+          target/release/bap bench bench/ssr/request.mjs --warmup 2 --iterations 20

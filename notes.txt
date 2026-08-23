@@ -233,3 +233,48 @@ doctor fixture probe, and report compat.
   numeric` during a full-workspace run; 10+ subsequent full runs green.
   Suspect parallel-execution interference rather than logic. Reopen only on
   recurrence.
+
+## 2026-08-23 — Phase 5 complete: tail latency & benchmarking (5 commits)
+
+- Task 1 (0b2da3b): bap_bench crate. ProfileScope -> RequestSample (lane,
+  index, duration, cold, measured, heap before/after); LatencyHistogram wraps
+  hdrhistogram with p50/p99/max/min; run() spawns N lane threads each owning
+  a tokio current_thread runtime + BapRuntime, distributing iterations
+  round-robin ((N-lane-1)/lanes+1 formula). performance.now shim added over a
+  new monotonic op so workloads time themselves portably.
+
+- Task 2 (6d2ea29): bench/ssr. route.js is dependency-free and identical on
+  bap/node/bun (fetch + JSON payload + template render); driver.js measures
+  inside one warm process; harness.mjs prints the shared table next to the
+  published Next.js figures. Local: bap 0.16/0.36 ms p50/p99 vs node
+  1.47/2.13, bun 0.06/0.50 @200 requests.
+
+- Task 3+5 (0891743): `bap bench` with --warmup/--lanes/--format json/
+  --trace chrome-trace. THE key bug of the phase: V8 allows ONE main module
+  per isolate, so repeated run_script silently no-op'd after the first
+  evaluation and the bench reported meaningless ~14us samples. Fix:
+  BapRuntime::run_script_source evaluates each call as a fresh SIDE module
+  under a unique ?__bap_step=N query (relative imports still resolve against
+  the real directory). Caught by writing a counter fixture that throws on
+  second execution — after initially trusting numbers that were too good.
+  Also learned: spawnSync in the same node process as the fixture server
+  self-deadlocks the server (the "fetch hang" was my test harness twice over,
+  plus one real TLA-classification regression from Phase 4 fixed by treating
+  top-level await as an ESM marker).
+
+- Task 4 (d001aad): pointer compression study. rusty_v8 150.4 makes PC an
+  opt-in cargo feature (spec's "default on" doesn't apply to Bap); no
+  prebuilt ptrcomp archive for aarch64-apple-darwin at this version; source
+  builds not justified while CI can't ship it. Decision: keep default,
+  re-evaluation gate documented with the exact one-line feature flip.
+
+- Task 6 (this commit): docs/latency-report.md — cold start 4.8-6.2 ms steady
+  (target <=8 PASS), synthetic SSR p99 <=0.55 ms (target <=150 PASS), npm
+  compat 100% local corpus (>=99% gate deferred until remote installs).
+  README links the report and documents `bap bench`. Roadmap marks Phase 5
+  complete; plan checkboxes ticked with note. CI gained a report-only
+  20-iteration smoke job.
+
+Process notes: python heredoc patches with assert-guarded replaces only;
+two silent no-op patches cost real debugging time earlier this session.
+Always verify a patch landed (grep the new symbol) before building on it.

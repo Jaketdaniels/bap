@@ -73,6 +73,17 @@ not implemented, and what would need an alias — see [docs/adoption.md](docs/ad
 Measured compatibility over the pinned corpus ships via
 `bench/compat/run.sh` and `target/debug/bap report compat`.
 
+## Benchmarking
+
+```sh
+target/release/bap bench bench/ssr/request.mjs --warmup 10 --iterations 200 --lanes 3
+```
+
+Measures per-request latency across long-lived isolates with p50/p99
+histograms and optional chrome-trace output (`--trace out.json`). The
+cross-runtime comparison harness lives in `bench/ssr`; current numbers and
+methodology are in [docs/latency-report.md](docs/latency-report.md).
+
 ## REPL and metrics
 
 ```sh
