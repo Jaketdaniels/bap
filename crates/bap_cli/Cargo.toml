@@ -10,6 +10,7 @@ name = "bap"
 path = "src/main.rs"
 
 [dependencies]
+bap_bench = { path = "../bap_bench" }
 bap_core = { path = "../bap_core" }
 bap_metrics = { path = "../bap_metrics" }
 bap_ts = { path = "../bap_ts" }

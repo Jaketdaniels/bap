@@ -9,6 +9,13 @@ pub enum MetricsFormat {
     Json,
 }
 
+/// Bench output format.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum BenchFormat {
+    Pretty,
+    Json,
+}
+
 /// Parsed `bap` command-line interface.
 #[derive(Parser)]
 #[command(
@@ -53,6 +60,29 @@ pub enum Command {
         /// Print machine-readable JSON.
         #[arg(long)]
         json: bool,
+    },
+    /// Measure script latency across pinned isolates
+    Bench {
+        /// Script executed once per request.
+        file: String,
+        /// Unmeasured executions per lane before measuring.
+        #[arg(long, default_value_t = 0)]
+        warmup: u32,
+        /// Measured requests distributed round-robin across lanes.
+        #[arg(long, default_value_t = 100)]
+        iterations: u32,
+        /// Long-lived isolates; each owns a thread.
+        #[arg(long, default_value_t = 1)]
+        lanes: u32,
+        /// Write a chrome-trace JSON document to this path.
+        #[arg(long)]
+        trace: Option<String>,
+        /// Output format.
+        #[arg(long, value_enum, default_value_t = BenchFormat::Pretty)]
+        format: BenchFormat,
+        /// Arguments passed to the script.
+        #[arg(help = "arguments passed to the script")]
+        script_args: Vec<String>,
     },
     /// Print measured reports
     Report {

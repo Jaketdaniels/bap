@@ -160,12 +160,45 @@ fn lane_run(
     rt.block_on(async move {
         let metrics = MetricsCollector::new();
         let loader = TsModuleLoader::for_user();
-        let script = options.script.to_string_lossy().into_owned();
         let mut runtime = BapRuntime::with_args_and_loader(
             metrics.clone(),
             options.args.clone(),
             std::rc::Rc::new(loader),
         );
+
+        // TypeScript sources transpile once; every iteration evaluates a
+        // fresh side module under a unique query so per-request work repeats
+        // while relative imports keep resolving against the real directory.
+        let raw = match std::fs::read_to_string(&options.script) {
+            Ok(source) => source,
+            Err(error) => {
+                let _ = sender.send(Err(format!("lane {lane_id}: {error}")));
+                return;
+            }
+        };
+        let extension = options
+            .script
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .unwrap_or("js");
+        let source = match extension {
+            "ts" | "mts" => match bap_ts::transpile(
+                &format!("file:///bench/{}", options.script.display()),
+                &raw,
+            ) {
+                Ok(output) => output.code,
+                Err(error) => {
+                    let _ = sender.send(Err(format!("lane {lane_id}: {error:#}")));
+                    return;
+                }
+            },
+            _ => raw,
+        };
+        let base_specifier = deno_core::ModuleSpecifier::from_file_path(
+            std::fs::canonicalize(&options.script).unwrap_or_else(|_| options.script.clone()),
+        )
+        .map(|url| url.to_string())
+        .unwrap_or_else(|_| format!("file:///{}", options.script.display()));
 
         let total_executions = options.warmup + iterations_for_lane(lane_id, options);
         let mut measured_index = 0_u32;
@@ -184,7 +217,8 @@ fn lane_run(
             );
             let heap_before = runtime.sample_heap();
             scope.observe_heap(heap_before.0, heap_before.1);
-            let result = runtime.run_script(&script).await;
+            let specifier = format!("{base_specifier}?__bap_step={step}");
+            let result = runtime.run_script_source(&specifier, source.clone()).await;
             let heap_after = runtime.sample_heap();
             let sample = scope.finish(heap_after);
             let send_result = match result {

@@ -392,3 +392,58 @@ fn report_compat_prints_measured_table() {
     assert!(stdout.contains("alpha"), "{stdout}");
     assert!(stdout.contains("aggregate: 1/2 passed (50%)"), "{stdout}");
 }
+
+#[test]
+fn bench_reports_histogram_and_trace() {
+    let dir = std::env::temp_dir().join(format!("bap_bench_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let script = dir.join("unit.mjs");
+    std::fs::write(&script, "globalThis.touched = true;\n").unwrap();
+
+    let out = Command::new(BIN)
+        .args([
+            "bench",
+            script.to_str().unwrap(),
+            "--warmup",
+            "2",
+            "--iterations",
+            "6",
+            "--format",
+            "json",
+        ])
+        .env("BAP_TS_CACHE_DIR", tempfile::tempdir().unwrap().path())
+        .output()
+        .expect("spawn bap");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(report["count"], 6);
+    assert!(report["p50Ns"].as_u64().unwrap() > 0);
+    assert_eq!(report["laneHeaps"].as_array().unwrap().len(), 1);
+
+    let trace_path = dir.join("trace.json");
+    let traced = Command::new(BIN)
+        .args([
+            "bench",
+            script.to_str().unwrap(),
+            "--iterations",
+            "4",
+            "--trace",
+            trace_path.to_str().unwrap(),
+        ])
+        .env("BAP_TS_CACHE_DIR", tempfile::tempdir().unwrap().path())
+        .output()
+        .expect("spawn bap");
+    assert!(
+        traced.status.success(),
+        "{}",
+        String::from_utf8_lossy(&traced.stderr)
+    );
+    let trace: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&trace_path).unwrap()).unwrap();
+    std::fs::remove_dir_all(&dir).ok();
+    assert_eq!(trace["traceEvents"].as_array().unwrap().len(), 4);
+}

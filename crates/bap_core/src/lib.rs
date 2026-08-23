@@ -75,6 +75,31 @@ impl BapRuntime {
         Ok(())
     }
 
+    /// Evaluates `source` as a fresh side ES module under `specifier`.
+    /// Repeated calls with distinct specifiers never hit module caches, so
+    /// benchmarks can treat each call as one full request.
+    pub async fn run_script_source(
+        &mut self,
+        specifier: &str,
+        source: String,
+    ) -> Result<(), Error> {
+        let module = deno_core::ModuleSpecifier::parse(specifier).map_err(Error::load)?;
+        // Side modules allow many evaluations per isolate; a unique
+        // specifier per call keeps each request independent.
+        let mod_id = self
+            .runtime
+            .load_side_es_module_from_code(&module, source)
+            .await
+            .map_err(Error::load)?;
+        let result = self.runtime.mod_evaluate(mod_id);
+        self.runtime
+            .run_event_loop(Default::default())
+            .await
+            .map_err(Error::eval)?;
+        result.await.map_err(Error::eval)?;
+        Ok(())
+    }
+
     /// Executes `code` and converts the result to a JSON value.
     /// Returns `None` when the result is `undefined`.
     pub fn eval(&mut self, code: &str) -> Result<Option<Value>, Error> {

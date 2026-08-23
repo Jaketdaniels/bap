@@ -153,6 +153,7 @@ dependencies = [
 name = "bap_cli"
 version = "0.1.0"
 dependencies = [
+ "bap_bench",
  "bap_core",
  "bap_metrics",
  "bap_ts",

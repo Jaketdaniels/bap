@@ -3,6 +3,7 @@
 
 #![forbid(unsafe_code)]
 
+mod bench;
 mod cli;
 mod config;
 mod doctor;
@@ -74,6 +75,15 @@ fn main() {
             }
         },
         cli::Command::Inspect { command } => inspect::inspect(command),
+        cli::Command::Bench {
+            file,
+            warmup,
+            iterations,
+            lanes,
+            trace,
+            format,
+            script_args,
+        } => bench::bench(file, warmup, iterations, lanes, script_args, trace, format),
         cli::Command::Doctor { json } => doctor::doctor(json),
         cli::Command::Report { command } => match command {
             cli::ReportCommand::Compat { input } => report::report(input),
