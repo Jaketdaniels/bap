@@ -174,3 +174,62 @@ Verified: cargo fmt/clippy -D warnings green, workspace tests green (20 suites),
 npm --prefix tools/ts-proof test green, tsc type check green, release-style
 smoke: run examples/numeric.ts, run --require-proofs on fold fixture prints 15,
 inspect proofs --json shows kinds ["unit.add"] units ["metre"].
+
+## 2026-08-23 — Phase 4 complete: Node compatibility & adoption (5 commits)
+
+- Task 1 CJS loader (f20d059): classifier (extension -> markers ->
+  package.json type, per-directory cached) + Rust-side wrapper synthesis.
+  cjs.js does synchronous require: files/index/package.json-main/json
+  probing, module objects cached BEFORE evaluation so cycles see partial
+  exports. Wrapper binds load(abs).exports as default plus regex-detected
+  named re-exports (exports.X=/module.exports.X=, capped 128, reserved-word
+  filtered). Two bugs worth remembering: the wrapper originally bound the
+  MODULE not .exports ("keys: exports,filename"); and dirname growth —
+  parentDir+"/"+"/./x" accumulated "/./" per hop until paths broke; fixed
+  with a lexical normalizer in cjs.js. Bare specifiers fail loudly with an
+  npm-not-supported message. Sync fs ops (read/write/exists/read_dir/stat/
+  mkdir) landed here to back the resolver.
+
+- Task 2 node: shims (9f08aad): assert/path/fs/util/events/buffer/process
+  as extension scripts populating one __bapNodeModules registry (also on
+  globalThis so served ESM can read it). Loader maps node:<name> to a
+  bap-shim://<name> URL and serves synthetic ESM re-exporting the SAME
+  namespace, so require and import share implementation AND state.
+  Unimplemented builtins report "not implemented on Bap" from both paths
+  via a KNOWN_NODE_BUILTINS list shared with doctor. Buffer subclasses
+  Uint8Array (utf8/hex/base64/latin1); process exposes env/argv/cwd/exit/
+  nextTick/platform through new ops. deno_core gotcha: extension JS must be
+  7-bit ASCII — em-dashes in comments panic at runtime init.
+
+- Task 3 adoption tooling (30838e9): bap.json {runtime,moduleFormat,
+  aliases} validated strictly; aliases flow ESM-side through loader resolve
+  rewriting and CJS-side through op_bap_aliases -> globalThis.__bapAliases,
+  resolving against cwd consistently. bap doctor walks sources, classifies
+  supported/not-implemented/local/missing, prints ratio, --json for tooling;
+  exits 0 (gates come later). docs/adoption.md documents the pathway.
+
+- Task 4 release process (c2a68c1): docs/release.md (strict semver, CC-
+  driven bumps, 18-month overlapping LTS lines aligned to Node majors),
+  empty deprecation-matrix.md, cargo-semver-checks CI job on lib crates.
+
+- Task 5 compat harness (a788f21): pinned local corpus of five packages
+  exercising the shim surface; run.mjs records results.json (pass/fail/timing),
+  run.sh wraps it against the release binary; `bap report compat` prints the
+  table plus an honest scope note — remote npm entries stay disabled until the
+  package-manager milestone, and the >=99% gate activates only then.
+  A minimal node:assert shim landed first because test suites need it
+  immediately (ok/equal/deepEqual/throws/rejects...).
+
+- Process notes: pipe-through-tail swallowed clippy's exit code once and let
+  a broken commit land; caught immediately, fixed, amended. Prefer explicit
+  status checks over pipes when gating commits.
+
+Verified: fmt/clippy -D warnings green, workspace tests green (22 suites,
+incl. 13 node-compat integration tests), ts-proof npm suite green, tsc type
+check green, corpus 5/5 under bap, release smoke of examples/node-style.js,
+doctor fixture probe, and report compat.
+
+- Flake watch (2026-08-23): one unreproduced failure of `bap_core --test
+  numeric` during a full-workspace run; 10+ subsequent full runs green.
+  Suspect parallel-execution interference rather than logic. Reopen only on
+  recurrence.

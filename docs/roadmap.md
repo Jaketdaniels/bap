@@ -8,7 +8,7 @@ through working vertical slices; planned capabilities are not presented as shipp
 | 1 | Minimal core | Engine, REPL, console, metrics | Complete | [plan](superpowers/plans/2026-08-19-bap-phase-1-minimal-core.md) |
 | 2 | Async runtime & I/O | Tokio timers, files, TCP, fetch | Complete | [plan](superpowers/plans/2026-08-19-bap-phase-2-async-io.md) |
 | 3 | Proof-carrying numerics | TypeScript loader/cache, numeric core, proof-backed specialization | Complete | [plan](superpowers/plans/2026-08-19-proof-carrying-numerics.md) |
-| 4 | Ecosystem compatibility | Node surface, native addons, representative npm corpus | Planned | [plan](superpowers/plans/2026-08-19-bap-phase-4-node-compat-adoption.md) |
+| 4 | Ecosystem compatibility | CJS loader, node: shims, adoption tooling, compat report | Complete | [plan](superpowers/plans/2026-08-19-bap-phase-4-node-compat-adoption.md) |
 | 5 | Tail latency | Real application harness, isolation, profiling, measured targets | Planned | [plan](superpowers/plans/2026-08-19-bap-phase-6-tail-latency.md) |
 | Future | Hybrid V8 + JSC engine | JSC for profile-selected SSR/numeric kernels | Deferred | — |
 

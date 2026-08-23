@@ -51,6 +51,28 @@ It also provides `readDir`, `stat`, `listen`, `accept`, `connect`, `read`, `writ
 `close`, and `closeListener`. `setTimeout` and `clearTimeout` use the runtime event
 loop. The TCP helpers bind to localhost.
 
+## Node compatibility
+
+Bap runs CommonJS and ESM side by side. `.cjs` files (and plain `.js` without
+import/export markers) load through a synchronous `require` with Node-style
+resolution, cycle handling, JSON requires, and best-effort named exports for
+`import { x } from "./lib.cjs"`.
+
+Implemented builtins: `node:assert`, `node:path`, `node:fs`, `node:util`,
+`node:events`, `node:buffer`, and `node:process`. Anything else fails at load
+time with a clear message instead of misbehaving later.
+
+```sh
+target/debug/bap run examples/node-style.js
+```
+
+Projects adopt Bap per service through `bap.json` (`runtime`, optional
+`moduleFormat`, and bare-specifier `aliases`); `package.json` stays untouched.
+`bap doctor` scans a project's imports and reports what is supported, what is
+not implemented, and what would need an alias — see [docs/adoption.md](docs/adoption.md).
+Measured compatibility over the pinned corpus ships via
+`bench/compat/run.sh` and `target/debug/bap report compat`.
+
 ## REPL and metrics
 
 ```sh
