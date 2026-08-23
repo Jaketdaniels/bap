@@ -3,7 +3,7 @@
 use crate::cli::MetricsFormat;
 use bap_core::BapRuntime;
 use bap_metrics::{MetricsCollector, MetricsSnapshot};
-use bap_ts::TsModuleLoader;
+use bap_ts::{ProofMode, TsModuleLoader};
 use std::rc::Rc;
 
 /// Runs the file at `path` with `script_args` and returns the process exit code.
@@ -11,10 +11,11 @@ use std::rc::Rc;
 pub fn run_file(
     path: &str,
     script_args: Vec<String>,
+    proof_mode: ProofMode,
     format: MetricsFormat,
     metrics: MetricsCollector,
 ) -> i32 {
-    let loader = TsModuleLoader::for_user();
+    let loader = TsModuleLoader::for_user().with_proof_mode(proof_mode);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

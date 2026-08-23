@@ -1,0 +1,4 @@
+--- bap metrics ---
+cold start: 4.149 ms
+heap samples: 1
+op console.log: 1 calls, 5 us total, 5 us max

@@ -1,6 +1,8 @@
+use crate::proof::manifest::{ProofAssessment, ProofManifest, assess};
 use crate::transpile;
 use deno_core::anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -8,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const SCHEMA: &str = "bap-ts-artifact-v1";
+const SCHEMA: &str = "bap-ts-artifact-v2";
 const COMPILER_VERSION: &str = "deno_ast-0.53.3";
 const OPTIONS_FINGERPRINT: &str =
     "module=esm;sourcemap=separate;inline_sources=true;transpile_options=default";
@@ -31,6 +33,15 @@ pub struct CachedArtifact {
     pub cache_hit: bool,
 }
 
+/// Specialization result folded into a fresh artifact.
+#[derive(Clone, Debug)]
+pub struct ProofBuild {
+    /// The proven-and-specialized source that produced `code`.
+    pub working_source: String,
+    /// The validated producer manifest, stored for cache-hit revalidation.
+    pub manifest: Value,
+}
+
 /// Content-addressed TypeScript artifact cache.
 #[derive(Clone)]
 pub struct Cache {
@@ -49,6 +60,8 @@ struct ArtifactV1 {
     code_hash: String,
     source_map: String,
     source_map_hash: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    proof_manifest: Option<Value>,
 }
 
 impl Cache {
@@ -59,15 +72,22 @@ impl Cache {
         })
     }
 
-    pub fn get_or_transpile(&self, input: &CacheInput) -> Result<CachedArtifact> {
+    /// Returns the validated artifact for `input`, or `None` on miss or tamper.
+    pub fn lookup(&self, input: &CacheInput) -> Option<CachedArtifact> {
+        let specifier = canonical_specifier(&input.specifier).ok()?;
+        let key = content_key(&specifier, input.source.as_bytes());
+        let path = self.root.join(&key);
+        self.read_valid(&path, &key, &specifier, &input.source)
+    }
+
+    /// Transpiles (possibly specialized) source, stores it, and returns the artifact.
+    pub fn store(&self, input: &CacheInput, proof: Option<&ProofBuild>) -> Result<CachedArtifact> {
         let specifier = canonical_specifier(&input.specifier)?;
         let key = content_key(&specifier, input.source.as_bytes());
         let path = self.root.join(&key);
-        if let Some(hit) = self.read_valid(&path, &key, &specifier, input.source.as_bytes()) {
-            return Ok(hit);
-        }
-
-        let output = transpile(&specifier, &input.source)?;
+        let working_source =
+            proof.map_or(input.source.as_str(), |build| build.working_source.as_str());
+        let output = transpile(&specifier, working_source)?;
         let artifact = ArtifactV1 {
             schema: SCHEMA.to_owned(),
             key,
@@ -79,6 +99,7 @@ impl Cache {
             source_map_hash: digest(output.source_map.as_bytes()),
             code: output.code,
             source_map: output.source_map,
+            proof_manifest: proof.map(|build| build.manifest.clone()),
         };
         let encoded =
             serde_json::to_vec(&artifact).context("failed to encode TypeScript artifact")?;
@@ -100,7 +121,7 @@ impl Cache {
         path: &Path,
         expected_key: &str,
         expected_specifier: &str,
-        source: &[u8],
+        source: &str,
     ) -> Option<CachedArtifact> {
         let metadata = fs::metadata(path).ok()?;
         if !metadata.is_file() || metadata.len() > MAX_ARTIFACT_SIZE {
@@ -114,7 +135,7 @@ impl Cache {
         if artifact.schema != SCHEMA
             || artifact.key != expected_key
             || artifact.specifier != expected_specifier
-            || artifact.source_hash != digest(source)
+            || artifact.source_hash != digest(source.as_bytes())
             || artifact.compiler_version != COMPILER_VERSION
             || artifact.options_fingerprint != OPTIONS_FINGERPRINT
             || artifact.code_hash != digest(artifact.code.as_bytes())
@@ -127,6 +148,16 @@ impl Cache {
                 ))
         {
             return None;
+        }
+        if let Some(manifest_value) = &artifact.proof_manifest {
+            let manifest: ProofManifest = match serde_json::from_value(manifest_value.clone()) {
+                Ok(parsed) => parsed,
+                Err(_) => return None,
+            };
+            match assess(&manifest, expected_specifier, source) {
+                Ok(ProofAssessment::Proven(_)) => {}
+                _ => return None,
+            }
         }
         Some(CachedArtifact {
             path: path.to_owned(),
@@ -284,9 +315,9 @@ mod tests {
     fn corrupt_artifact_is_rebuilt() {
         let dir = tempfile::tempdir().unwrap();
         let cache = Cache::new(dir.path()).unwrap();
-        let first = cache.get_or_transpile(&fixture()).unwrap();
+        let first = cache.store(&fixture(), None).unwrap();
         std::fs::write(&first.path, b"not json").unwrap();
-        let second = cache.get_or_transpile(&fixture()).unwrap();
+        let second = cache.store(&fixture(), None).unwrap();
         assert_eq!(second.code, first.code);
         assert!(!second.cache_hit);
     }
@@ -295,8 +326,8 @@ mod tests {
     fn valid_artifact_is_a_cache_hit() {
         let dir = tempfile::tempdir().unwrap();
         let cache = Cache::new(dir.path()).unwrap();
-        let first = cache.get_or_transpile(&fixture()).unwrap();
-        let second = cache.get_or_transpile(&fixture()).unwrap();
+        let first = cache.store(&fixture(), None).unwrap();
+        let second = cache.lookup(&fixture()).unwrap();
         assert_eq!(second.path, first.path);
         assert_eq!(second.code, first.code);
         assert!(second.cache_hit);
@@ -306,10 +337,10 @@ mod tests {
     fn changed_source_uses_a_new_content_key() {
         let dir = tempfile::tempdir().unwrap();
         let cache = Cache::new(dir.path()).unwrap();
-        let first = cache.get_or_transpile(&fixture()).unwrap();
+        let first = cache.store(&fixture(), None).unwrap();
         let mut changed = fixture();
         changed.source = "export const answer: number = 43;\n".to_owned();
-        let second = cache.get_or_transpile(&changed).unwrap();
+        let second = cache.store(&changed, None).unwrap();
         assert_ne!(second.path, first.path);
         assert!(!second.cache_hit);
     }
@@ -318,13 +349,37 @@ mod tests {
     fn publish_failure_does_not_discard_transpiled_code() {
         let dir = tempfile::tempdir().unwrap();
         let cache = Cache::new(dir.path()).unwrap();
-        let first = cache.get_or_transpile(&fixture()).unwrap();
+        let first = cache.store(&fixture(), None).unwrap();
         std::fs::remove_file(&first.path).unwrap();
         std::fs::create_dir(&first.path).unwrap();
 
-        let second = cache.get_or_transpile(&fixture()).unwrap();
+        let second = cache.store(&fixture(), None).unwrap();
         assert_eq!(second.code, first.code);
         assert!(!second.cache_hit);
+    }
+
+    #[test]
+    fn tampered_proof_manifest_invalidates_the_cache_entry() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = Cache::new(dir.path()).unwrap();
+        let input = fixture();
+
+        // Store trusts the caller; lookup independently revalidates.
+        let bogus = serde_json::json!({
+            "protocolVersion": 1,
+            "typescriptVersion": "7.0.2",
+            "specifier": "file:///entry.ts",
+            "sourceHash": "0".repeat(64),
+            "dependencies": [],
+            "diagnostics": [],
+            "proofs": []
+        });
+        let build = ProofBuild {
+            working_source: input.source.clone(),
+            manifest: bogus,
+        };
+        cache.store(&input, Some(&build)).unwrap();
+        assert!(cache.lookup(&input).is_none());
     }
 
     #[cfg(unix)]
@@ -335,7 +390,7 @@ mod tests {
         let parent = tempfile::tempdir().unwrap();
         let root = parent.path().join("nested").join("cache");
         let cache = Cache::new(&root).unwrap();
-        let artifact = cache.get_or_transpile(&fixture()).unwrap();
+        let artifact = cache.store(&fixture(), None).unwrap();
         assert_eq!(
             std::fs::metadata(&root).unwrap().permissions().mode() & 0o777,
             0o700

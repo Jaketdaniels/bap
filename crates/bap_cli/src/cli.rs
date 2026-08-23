@@ -36,10 +36,34 @@ pub enum Command {
     Run {
         /// Path to a JavaScript or TypeScript file.
         file: String,
+        /// Never consult the TypeScript proof backend.
+        #[arg(long, conflicts_with = "require_proofs")]
+        no_proofs: bool,
+        /// Fail when a recognized proof candidate does not prove.
+        #[arg(long)]
+        require_proofs: bool,
         /// Arguments passed to the script.
         #[arg(help = "arguments passed to the script")]
         script_args: Vec<String>,
     },
     /// Start an interactive REPL
     Repl,
+    /// Inspect runtime artifacts
+    Inspect {
+        #[command(subcommand)]
+        command: InspectCommand,
+    },
+}
+
+/// Inspection subcommands.
+#[derive(Subcommand)]
+pub enum InspectCommand {
+    /// Report the proof evidence a TypeScript file produces
+    Proofs {
+        /// Path to a TypeScript file.
+        file: String,
+        /// Print machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
 }
