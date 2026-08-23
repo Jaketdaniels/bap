@@ -52,6 +52,9 @@ function clearTimeout(id) {
   Deno.core.ops.op_timer_clear(id);
 }
 
+const numericNamespace = globalThis.__bapNumeric;
+delete globalThis.__bapNumeric;
+
 const bap = {};
 
 bap.readFile = (path) => Deno.core.ops.op_fs_read_file(String(path));
@@ -86,6 +89,12 @@ bap.fetch = async (url) => {
   };
 };
 
+bap.numeric = numericNamespace;
+
 globalThis.bap = Object.freeze(bap);
+globalThis.Bap = Object.freeze({
+  args: Deno.core.ops.op_bap_args(),
+  numeric: numericNamespace,
+});
 globalThis.setTimeout = setTimeout;
 globalThis.clearTimeout = clearTimeout;

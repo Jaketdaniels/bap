@@ -185,6 +185,7 @@ dependencies = [
 name = "bap_ops"
 version = "0.1.0"
 dependencies = [
+ "bap_math",
  "bap_metrics",
  "deno_core",
  "deno_error",

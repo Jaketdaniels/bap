@@ -1,4 +1,4 @@
-//! The bap V8 extension: console ops, script args, and their JS bootstrap.
+//! The bap V8 extension: console ops, script args, numeric helpers, and their JS bootstrap.
 
 #![forbid(unsafe_code)]
 
@@ -7,6 +7,7 @@ mod fetch;
 mod fs;
 mod metrics;
 mod net;
+mod numeric;
 mod timers;
 pub use console::{op_bap_args, op_console_error, op_console_log, op_console_warn};
 pub use fetch::{FetchState, op_fetch, op_fetch_body};
@@ -14,6 +15,13 @@ pub use fs::{op_fs_read_dir, op_fs_read_file, op_fs_stat, op_fs_write_file};
 pub use net::{
     op_net_accept, op_net_close, op_net_close_listener, op_net_connect, op_net_listen, op_net_read,
     op_net_write,
+};
+pub use numeric::{
+    op_numeric_fixed_binop, op_numeric_fixed_parse, op_numeric_i32_binop, op_numeric_i32_neg,
+    op_numeric_i64_add_batch, op_numeric_i64_binop, op_numeric_i64_neg, op_numeric_interval_add,
+    op_numeric_interval_add_batch, op_numeric_interval_div, op_numeric_interval_div_batch,
+    op_numeric_interval_mul, op_numeric_interval_mul_batch, op_numeric_interval_new,
+    op_numeric_interval_sub, op_numeric_interval_sub_batch,
 };
 pub use timers::{op_timer_clear, op_timer_create, op_timer_set_timeout};
 
@@ -42,9 +50,25 @@ extension!(
         op_net_close,
         op_net_close_listener,
         op_fetch,
-        op_fetch_body
+        op_fetch_body,
+        op_numeric_interval_new,
+        op_numeric_interval_add,
+        op_numeric_interval_sub,
+        op_numeric_interval_mul,
+        op_numeric_interval_div,
+        op_numeric_interval_add_batch,
+        op_numeric_interval_sub_batch,
+        op_numeric_interval_mul_batch,
+        op_numeric_interval_div_batch,
+        op_numeric_i32_binop,
+        op_numeric_i32_neg,
+        op_numeric_i64_binop,
+        op_numeric_i64_neg,
+        op_numeric_i64_add_batch,
+        op_numeric_fixed_parse,
+        op_numeric_fixed_binop
     ],
-    js = [dir "src/js", "console.js", "runtime.js"],
+    js = [dir "src/js", "console.js", "numeric.js", "runtime.js"],
     options = { metrics: MetricsCollector, args: Vec<String> },
     state = |state, config| {
         state.put(config.metrics);

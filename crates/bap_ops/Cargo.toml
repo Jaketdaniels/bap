@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+bap_math = { path = "../bap_math" }
 bap_metrics = { path = "../bap_metrics" }
 deno_core.workspace = true
 deno_ops.workspace = true
