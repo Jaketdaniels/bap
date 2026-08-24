@@ -15,6 +15,10 @@ path = "src/main.rs"
 name = "bap_cli"
 path = "src/lib.rs"
 
+[package.metadata.dist]
+# publish=false hides bins from dist; this opts the release binary back in.
+dist = true
+
 [dependencies]
 bap_bench = { path = "../bap_bench" }
 bap_core = { path = "../bap_core" }
