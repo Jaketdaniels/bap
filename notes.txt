@@ -356,3 +356,22 @@ proves executions happen; grep-verify every scripted patch before building.
   source.tar.gz and sha256.sum.
 - Gotchas: github-release is now a table in 0.32 (boolean fails TOML parse);
   package rename required -p bap in the mangen freshness test and example docs.
+
+## 2026-08-24 — v0.1.0 released via cargo-dist
+
+Repo created (Jaketdaniels/bap, public), main + tag pushed; the Release
+workflow built all five platforms and published the release with 16 assets
+(5 archives + checksums, 2 installers, source tarball, sha256.sum,
+dist-manifest.json). Verified a musl archive downloads and lists bap/LICENSE.
+
+Three CI fixes were needed along the way, all caught by actually running the
+pipeline: (1) bench-smoke pointed at the SSR fixture which needs a payload
+server CI doesn't start — added dependency-free bench/smoke.mjs;
+(2) aarch64-unknown-linux-musl cannot link V8 statically (__clear_cache
+undefined in FlushICache) — linux arm64 ships as gnu instead; (3) publish=false
+on the renamed package hid its binary from dist's plan step — fixed with
+[package.metadata.dist] dist = true. Also dropped the cargo-semver-checks job
+entirely: with no crates publishing to crates.io it resolved the unrelated
+crates.io 'bap' package and could never produce a valid baseline; release.md
+documents the re-enable condition. Stale-tag lesson: v0.1.0 already existed
+from Phase 1 and got pushed once before checking — always `git tag -l` first.
