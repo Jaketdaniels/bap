@@ -50,7 +50,7 @@ pub fn root_command() -> clap::Command {
 )]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Command,
+    pub command: Option<Command>,
 
     /// Metrics report format.
     #[arg(long, global = true, value_enum, default_value_t = MetricsFormat::Pretty, help = "metrics report format")]
@@ -81,6 +81,11 @@ pub enum Command {
         #[arg(help = "arguments passed to the script (use `--` before dash-args)")]
         script_args: Vec<String>,
     },
+    /// Start an interactive REPL
+    #[command(
+        after_help = "Dot commands inside the REPL:\n  .help    list commands\n  .metrics toggle timing output\n  .clear   clear the screen\n  .exit    leave the REPL (Ctrl-D also works)"
+    )]
+    Repl,
     /// Scaffold a bap.json for this project
     #[command(after_help = "Examples:\n  bap init\n  bap init --format cjs --force")]
     Init {
@@ -94,11 +99,30 @@ pub enum Command {
         #[arg(long)]
         json: bool,
     },
-    /// Start an interactive REPL
+    /// Configure this machine: completions and man pages
     #[command(
-        after_help = "Dot commands inside the REPL:\n  .help    list commands\n  .metrics toggle timing output\n  .clear   clear the screen\n  .exit    leave the REPL (Ctrl-D also works)"
+        after_help = "Examples:\n  bap install             # write completions + man pages, print PATH advice\n  bap install --dry-run   # show what would change"
     )]
-    Repl,
+    Install {
+        /// Show what would be written without writing anything.
+        #[arg(long)]
+        dry_run: bool,
+        /// Also append an fpath snippet to ~/.zshrc for zsh completions.
+        #[arg(long)]
+        zshrc: bool,
+        /// Print machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Update bap to the latest GitHub release
+    Upgrade {
+        /// Upgrade to this exact tag instead of latest.
+        #[arg(long)]
+        version: Option<String>,
+        /// Show what would happen without changing anything.
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Diagnose a project's compatibility with Bap
     Doctor {
         /// Print machine-readable JSON.

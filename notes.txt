@@ -375,3 +375,28 @@ entirely: with no crates publishing to crates.io it resolved the unrelated
 crates.io 'bap' package and could never produce a valid baseline; release.md
 documents the re-enable condition. Stale-tag lesson: v0.1.0 already existed
 from Phase 1 and got pushed once before checking — always `git tag -l` first.
+
+## 2026-08-24 — One-command install & self-upgrade (this commit)
+
+User call: bap's install story was too complicated for a bun alternative.
+Now: `curl ... bootstrap.sh | sh` installs AND configures (binary ->
+~/.bap/bin, completions for bash/zsh/fish, man pages under
+~/.local/share/bap/man, guarded ~/.zshrc fpath snippet with --zshrc,
+PATH advice). `bap upgrade [--version TAG] [--dry-run]` self-updates from
+GitHub Releases: resolves latest, verifies sha256 sidecar before anything
+moves, extracts via system tar, atomic rename over the running binary
+(unix; windows prints a clear fallback). Bare `bap` on a TTY opens the REPL
+like bun; without a TTY it runs doctor so scripts still get useful output.
+
+Bonus fix surfaced while wiring upgrade: HTTPS fetch was broken project-wide
+(reqwest had default-features=false with no TLS). Enabled rustls-tls + json;
+fetch() also now sends a bap/<version> User-Agent (GitHub 403s without one).
+
+Implementation notes: clap_mangen moved from dev-deps to deps so install can
+render pages at runtime from the live parser (no stale embedded docs).
+clap::Command::name borrows &'static str — Box::leak per page is fine here
+(bounded by page count). Edition-2024 set_var is unsafe; tests avoid env
+mutation by injecting home/data paths directly. Debug-vs-release confusion
+cost time again when a lib signature change and bin caller briefly disagreed:
+the real story was my earlier python patch silently not applying to lib.rs;
+grep-verify patches BEFORE blaming caches.

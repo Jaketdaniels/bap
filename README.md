@@ -4,17 +4,25 @@ Bap is a small V8-based JavaScript and TypeScript runtime written in Rust. It gi
 scripts a focused runtime surface for files, timers, TCP, HTTP fetches, metrics,
 audited numerics, and proof-specialized constants.
 
-## Install
-
-Grab a prebuilt archive from [GitHub Releases](https://github.com/Jaketdaniels/bap/releases)
-(darwin arm64/x64, linux musl x64 + gnu arm64, windows msvc), or run the installer:
+## Quickstart
 
 ```sh
-curl -fsSL https://github.com/Jaketdaniels/bap/releases/latest/download/bap-installer.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Jaketdaniels/bap/main/scripts/bootstrap.sh | sh
+bap run examples/hello.ts
 ```
 
-Releases are cut by pushing a version tag (`v0.1.0`); cargo-dist builds every
-platform, generates checksums and install scripts, and publishes the release.
+The first command installs bap **and** configures it: shell completions for
+bash/zsh/fish, man pages, and PATH advice. Keeping current is one word:
+
+```sh
+bap upgrade          # fetches and swaps in the latest release
+```
+
+Prefer to do it by hand? Archives live on
+[GitHub Releases](https://github.com/Jaketdaniels/bap/releases)
+(darwin arm64/x64, linux musl-x64 + gnu-arm64, windows msvc), and
+`bap install --dry-run` shows exactly what setup would touch. Releases are cut
+by pushing a version tag; cargo-dist builds every platform and publishes.
 
 ## Build
 
@@ -91,17 +99,13 @@ Measured compatibility over the pinned corpus ships via
 
 ## Completions and manual
 
-```sh
-# zsh
-mkdir -p ~/.zfunc && bap complete zsh > ~/.zfunc/_bap   # add ~/.zfunc to fpath
-# bash
-bap complete bash > ~/.local/share/bash-completion/completions/bap
-# fish
-bap complete fish > ~/.config/fish/completions/bap.fish
+Already ran `bap install`? You are done — completions and man pages are in
+place. To re-write them after changing shells, run `bap install` again
+(`--dry-run` previews, `--zshrc` also appends an fpath snippet to `~/.zshrc`).
+Man pages are committed under `docs/man` and regenerated with:
 
-# man pages (committed under docs/man, regenerated with the example below)
-install -Dm644 docs/man/bap.1 ~/.local/share/man/man1/bap.1
-cargo run -p bap_cli --example mangen -- docs/man   # regenerate all pages
+```sh
+cargo run -p bap --example mangen -- docs/man
 ```
 
 ## Benchmarking

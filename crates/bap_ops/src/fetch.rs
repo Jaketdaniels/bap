@@ -58,11 +58,11 @@ pub async fn op_fetch(
     #[string] url: String,
 ) -> Result<FetchResult, JsErrorBox> {
     let started = Instant::now();
-    let response = reqwest::Client::new()
-        .get(&url)
-        .send()
-        .await
-        .map_err(fetch_err)?;
+    let client = reqwest::Client::builder()
+        .user_agent(concat!("bap/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .map_err(|e| JsErrorBox::new("Error", format!("fetch: {e}")))?;
+    let response = client.get(&url).send().await.map_err(fetch_err)?;
     let status = response.status().as_u16();
     let ok = response.status().is_success();
     let headers = response

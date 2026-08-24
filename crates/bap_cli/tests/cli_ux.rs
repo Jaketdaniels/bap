@@ -227,3 +227,54 @@ fn complete_out_writes_a_file_instead_of_stdout() {
     let contents = std::fs::read_to_string(&target).unwrap();
     assert!(contents.starts_with("#compdef bap"));
 }
+
+#[test]
+fn install_configures_home_end_to_end() {
+    let sandbox = Sandbox::new("install");
+    let out = sandbox
+        .command()
+        .args(["install"])
+        .env("HOME", sandbox.root.path())
+        .env_remove("XDG_DATA_HOME")
+        .output()
+        .expect("spawn bap");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    let data = sandbox.root.path().join(".local/share/bap");
+    assert!(data.join("completions/bap.bash").is_file());
+    assert!(data.join("completions/_bap").is_file());
+    assert!(data.join("completions/bap.fish").is_file());
+    assert!(data.join("man/man1/bap.1").is_file());
+
+    // Idempotent: a second run succeeds too.
+    let again = sandbox
+        .command()
+        .args(["install"])
+        .env("HOME", sandbox.root.path())
+        .env_remove("XDG_DATA_HOME")
+        .output()
+        .expect("spawn bap");
+    assert!(
+        again.status.success(),
+        "{}",
+        String::from_utf8_lossy(&again.stderr)
+    );
+}
+
+#[test]
+fn bare_bap_without_a_tty_prints_doctor_guidance() {
+    let sandbox = Sandbox::new("bare");
+    sandbox.write(
+        "app.js",
+        "import p from 'node:path';\nimport q from 'some-npm-thing';\n",
+    );
+    let out = sandbox.command().output().expect("spawn bap");
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("bap doctor"), "{stdout}");
+    assert!(stdout.contains("missing"), "{stdout}");
+}

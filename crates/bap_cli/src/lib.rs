@@ -11,14 +11,17 @@ pub mod config;
 mod doctor;
 pub mod init;
 mod inspect;
+pub mod machine;
 pub mod repl;
 mod report;
 pub mod resolve;
 pub mod run;
 pub mod style;
+pub mod upgrade;
 
 use bap_metrics::MetricsCollector;
 use bap_ts::{ProofMode, TsModuleLoader};
+use std::io::IsTerminal as _;
 
 /// Configures process-global runtime defaults; call once before any isolate.
 pub fn configure() {
@@ -26,11 +29,19 @@ pub fn configure() {
 }
 
 /// Dispatches a parsed command and returns the process exit code.
+/// A bare `bap` opens the REPL on a terminal, like bun; otherwise it helps.
 pub fn entry(
-    command: cli::Command,
+    command: Option<cli::Command>,
     metrics_format: cli::MetricsFormat,
     log_level: Option<&str>,
 ) -> i32 {
+    let command = command.unwrap_or_else(|| {
+        if std::io::stdin().is_terminal() && std::io::stdout().is_terminal() {
+            cli::Command::Repl
+        } else {
+            cli::Command::Doctor { json: false }
+        }
+    });
     bap_metrics::logging::init(log_level.unwrap_or("info"));
     let metrics = MetricsCollector::new();
     match command {
@@ -122,6 +133,12 @@ pub fn entry(
             cli::ReportCommand::Compat { input } => report::report(input),
         },
         cli::Command::Inspect { command } => inspect::inspect(command),
+        cli::Command::Install {
+            dry_run,
+            zshrc,
+            json,
+        } => machine::install(dry_run, zshrc, json),
+        cli::Command::Upgrade { version, dry_run } => upgrade::upgrade(version, dry_run),
         cli::Command::Complete { shell, out } => complete(shell, out),
     }
 }
