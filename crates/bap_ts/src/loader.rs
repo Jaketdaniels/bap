@@ -68,7 +68,7 @@ impl TsModuleLoader {
             .map(PathBuf::from)
             .or_else(|| {
                 directories::ProjectDirs::from("", "", "bap")
-                    .map(|dirs| dirs.cache_dir().join("typescript").join("v1"))
+                    .map(|dirs| dirs.cache_dir().join("typescript").join("v2"))
             });
         Self {
             cache_root,

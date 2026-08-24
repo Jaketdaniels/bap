@@ -17,6 +17,7 @@ use bap_ts::{ProofMode, TsModuleLoader};
 use clap::Parser;
 
 fn main() {
+    bap_ops::configure_v8_defaults();
     let cli = cli::Cli::parse();
     bap_metrics::logging::init(cli.log_level.as_deref().unwrap_or("info"));
     let metrics = MetricsCollector::new();

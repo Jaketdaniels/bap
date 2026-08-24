@@ -101,8 +101,15 @@ function __bapCjsAliases() {
 }
 
 function __bapCjsResolve(request, parentDir) {
+  if (request.length === 0) {
+    throw new Error("bap: require() needs a non-empty module specifier");
+  }
   let name = request;
-  if (name.startsWith("node:")) name = name.slice(5);
+  let hadNodePrefix = false;
+  if (name.toLowerCase().startsWith("node:")) {
+    name = name.slice(5);
+    hadNodePrefix = true;
+  }
   if (__bapCjsIsBare(name)) {
     const aliases = __bapCjsAliases();
     if (aliases && typeof aliases[name] === "string") {
@@ -113,8 +120,10 @@ function __bapCjsResolve(request, parentDir) {
       if (aliasTarget) return aliasTarget;
     }
     if (__bapNodeModules[name] !== undefined) return { builtin: name };
-    if (__bapCjsNodeBuiltins.has(name)) {
-      throw new Error(`bap: node:${name} is not implemented on Bap`);
+    if (hadNodePrefix || __bapCjsNodeBuiltins.has(name)) {
+      throw new Error(
+        `bap: node:${name} is not implemented on Bap`,
+      );
     }
     throw new Error(
       `bap: cannot find module '${request}' (npm packages are not supported on Bap yet)`,
@@ -127,42 +136,6 @@ function __bapCjsResolve(request, parentDir) {
     ?? (() => {
       throw new Error(`bap: cannot find module '${request}' from '${parentDir}'`);
     })();
-}
-
-function __bapCjsEvaluate(resolvedPath, source) {
-  const dirname = __bapCjsDirname(resolvedPath);
-  const module = { exports: {}, filename: resolvedPath };
-  // Cache before evaluation so require cycles see partial exports.
-  __bapCjsModuleCache.set(resolvedPath, module);
-  const initialize = new Function(
-    "module",
-    "exports",
-    "require",
-    "__filename",
-    "__dirname",
-    source,
-  );
-  initialize.call(
-    module.exports,
-    module,
-    module.exports,
-    __bapCjsMakeRequire(dirname),
-    resolvedPath,
-    dirname,
-  );
-  return module;
-}
-
-function __bapCjsLoad(resolvedPath) {
-  const cached = __bapCjsModuleCache.get(resolvedPath);
-  if (cached) return cached;
-  const bytes = __bapCjsReadBytes(resolvedPath);
-  if (resolvedPath.endsWith(".json")) {
-    const module = { exports: JSON.parse(decodeUtf8(bytes)), filename: resolvedPath };
-    __bapCjsModuleCache.set(resolvedPath, module);
-    return module;
-  }
-  return __bapCjsEvaluate(resolvedPath, decodeUtf8(bytes));
 }
 
 function __bapCjsMakeRequire(parentDir) {
@@ -182,8 +155,45 @@ function __bapCjsMakeRequire(parentDir) {
   return require;
 }
 
+function __bapCjsLoad(resolvedPath) {
+  const cached = __bapCjsModuleCache.get(resolvedPath);
+  if (cached) return cached;
+  const bytes = __bapCjsReadBytes(resolvedPath);
+  if (resolvedPath.endsWith(".json")) {
+    const module = { exports: JSON.parse(decodeUtf8(bytes)), filename: resolvedPath };
+    __bapCjsModuleCache.set(resolvedPath, module);
+    return module;
+  }
+  const dirname = __bapCjsDirname(resolvedPath);
+  const module = { exports: {}, filename: resolvedPath };
+  // Cache before evaluation so require cycles see partial exports.
+  __bapCjsModuleCache.set(resolvedPath, module);
+  const initialize = new Function(
+    "module",
+    "exports",
+    "require",
+    "__filename",
+    "__dirname",
+    decodeUtf8(bytes),
+  );
+  initialize.call(
+    module.exports,
+    module,
+    module.exports,
+    __bapCjsMakeRequire(dirname),
+    resolvedPath,
+    dirname,
+  );
+  return module;
+}
+
+// The ESM wrappers synthesized in Rust share this cache so that a top-level
+// .cjs and something require()ing it later observe one module object.
+globalThis.__bapCjsCache = __bapCjsModuleCache;
+
 globalThis.__bapCjs = Object.freeze({
   load: __bapCjsLoad,
+  makeRequire: __bapCjsMakeRequire,
   resolve: (request, parentDir) => {
     const resolved = __bapCjsResolve(String(request), String(parentDir));
     return typeof resolved === "object" ? `node:${resolved.builtin}` : resolved;

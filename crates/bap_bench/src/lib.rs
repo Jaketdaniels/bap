@@ -12,6 +12,9 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::Instant;
 
+/// Native stack per lane thread; V8's JS stack budget sits inside it.
+const LANE_NATIVE_STACK: usize = 16 * 1024 * 1024;
+
 /// What and how to benchmark.
 #[derive(Clone, Debug)]
 pub struct BenchOptions {
@@ -74,7 +77,10 @@ impl BenchReport {
 
 /// Executes the benchmark across lanes; each lane owns its thread and runtime.
 pub fn run(options: BenchOptions) -> Result<BenchReport, String> {
-    let lanes = options.lanes.max(1);
+    // Clamp once so lane threads see the same lane count as the spawner.
+    let mut options = options;
+    options.lanes = options.lanes.max(1);
+    let lanes = options.lanes;
     // Workload environment applies once before lanes exist; `set_var` is
     // unsafe in edition 2024 because it is process-global, which is why this
     // runs single-threaded here rather than per lane.
@@ -91,9 +97,13 @@ pub fn run(options: BenchOptions) -> Result<BenchReport, String> {
         .map(|lane_id| {
             let options = options.clone();
             let sender = sender.clone();
-            std::thread::spawn(move || {
-                lane_main(lane_id, &options, sender);
-            })
+            // Deep V8 stacks need matching native stacks on lane threads.
+            std::thread::Builder::new()
+                .stack_size(LANE_NATIVE_STACK)
+                .spawn(move || {
+                    lane_main(lane_id, &options, sender);
+                })
+                .expect("lane thread")
         })
         .collect();
     drop(sender);

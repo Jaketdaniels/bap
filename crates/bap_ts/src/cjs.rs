@@ -207,34 +207,42 @@ impl PackageTypeCache {
     }
 }
 
-/// Builds the synthetic ESM that evaluates a CJS module through `__bapCjs`.
+/// Builds the synthetic ESM that evaluates a CJS module inline.
+///
+/// The source becomes part of a real ES module so V8's module compiler (which
+/// scales to large sources) handles it, while the shared cache keeps require
+/// cycles and repeat imports Node-compatible.
 pub fn synthesize_wrapper(specifier_path: &Path, source: &str) -> String {
     let absolute =
         std::fs::canonicalize(specifier_path).unwrap_or_else(|_| specifier_path.to_path_buf());
+    let key = json_string(&absolute.to_string_lossy());
+    let dirname = json_string(
+        absolute
+            .parent()
+            .map(Path::to_string_lossy)
+            .unwrap_or_default()
+            .as_ref(),
+    );
     let names = detect_named_exports(source);
-    let mut out = String::with_capacity(source.len() / 2 + 256);
+    let mut out = String::with_capacity(source.len() + 512);
     out.push_str(&format!(
-        "const __bapCjsModule = globalThis.__bapCjs.load({}).exports;\n",
-        json_string(&absolute.to_string_lossy())
+        "const __bapKey = {key};\nconst __bapDirname = {dirname};\n"
     ));
+    out.push_str("if (!globalThis.__bapCjsCache.has(__bapKey)) {\n");
+    out.push_str("  const module = { exports: {}, filename: __bapKey };\n");
+    out.push_str("  globalThis.__bapCjsCache.set(__bapKey, module);\n");
+    out.push_str("  (function (module, exports, require, __filename, __dirname) {\n");
+    out.push_str(source);
+    out.push_str("\n  })(module, module.exports, globalThis.__bapCjs.makeRequire(__bapDirname), __bapKey, __bapDirname);\n");
+    out.push_str("}\n");
+    out.push_str("const __bapCjsModule = globalThis.__bapCjsCache.get(__bapKey).exports;\n");
     out.push_str("export default __bapCjsModule;\n");
-    let mut exported = Vec::new();
     for name in names {
         out.push_str(&format!(
-            "const {name} = __bapCjsModule.{};\n",
-            property_key(&name)
+            "const {name} = __bapCjsModule.{name};\nexport {{ {name} }};\n"
         ));
-        exported.push(name);
-    }
-    if !exported.is_empty() {
-        out.push_str(&format!("export {{ {} }};\n", exported.join(", ")));
     }
     out
-}
-
-fn property_key(name: &str) -> String {
-    // Identifiers are pre-validated; plain member access is safe.
-    name.to_owned()
 }
 
 fn json_string(value: &str) -> String {
@@ -257,8 +265,9 @@ mod tests {
 
     #[test]
     fn import_and_export_markers_mean_esm() {
+        // Bare top-level await (the examples/async.js shape).
         assert_eq!(
-            classify(Path::new("/x/a.js"), "const v = await load();\n"),
+            classify(Path::new("/x/a.js"), "await load();\n"),
             ModuleKind::Esm
         );
         assert_eq!(
@@ -310,14 +319,32 @@ exports.multiply = (a) => a * 2;
     }
 
     #[test]
-    fn wrapper_loads_by_absolute_path_and_reexports_names() {
+    fn wrapper_registers_in_shared_cache_and_reexports_names() {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("local.cjs");
         std::fs::write(&file, b"exports.answer = 42;\n").unwrap();
         let wrapper = synthesize_wrapper(&file, "exports.answer = 42;\n");
-        assert!(wrapper.contains("__bapCjs.load("), "{wrapper}");
+        assert!(wrapper.contains("__bapCjsCache.has(__bapKey)"), "{wrapper}");
+        assert!(wrapper.contains("(function (module, exports, require, __filename, __dirname) {"));
         assert!(wrapper.contains("export default __bapCjsModule;"));
         assert!(wrapper.contains("const answer = __bapCjsModule.answer;"));
         assert!(wrapper.contains("export { answer };"));
+    }
+
+    #[test]
+    fn large_cjs_sources_flow_through_the_module_compiler() {
+        // 12k flat statements: overflows classic-script compilation but is
+        // fine through the module pipeline the wrapper now uses.
+        let mut source = String::with_capacity(200_000);
+        for i in 0..12_000 {
+            source.push_str(&format!("const a{i} = {i};\n"));
+        }
+        source.push_str("exports.total = a0 + a11999;\n");
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("big.cjs");
+        std::fs::write(&file, &source).unwrap();
+        let wrapper = synthesize_wrapper(&file, &source);
+        assert!(wrapper.len() > source.len());
+        assert!(wrapper.trim_end().ends_with(";"));
     }
 }

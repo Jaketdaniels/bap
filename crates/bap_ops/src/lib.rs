@@ -34,7 +34,15 @@ pub use timers::{op_timer_clear, op_timer_create, op_timer_set_timeout};
 
 use bap_metrics::MetricsCollector;
 use deno_core::extension;
+use deno_core::v8;
 use std::collections::BTreeMap;
+
+/// Raises V8's JS stack so classic-script compilation (CommonJS wrappers)
+/// of large sources does not overflow inside module-evaluation frames.
+/// Native stacks are 8 MiB by default; 6 MiB of JS stack fits under that.
+pub fn configure_v8_defaults() {
+    v8::V8::set_flags_from_string("--stack-size=6000");
+}
 
 extension!(
     bap,

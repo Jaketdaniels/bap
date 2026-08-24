@@ -49,7 +49,7 @@ pub struct Cache {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct ArtifactV1 {
+struct CachedArtifactFile {
     schema: String,
     key: String,
     specifier: String,
@@ -88,7 +88,7 @@ impl Cache {
         let working_source =
             proof.map_or(input.source.as_str(), |build| build.working_source.as_str());
         let output = transpile(&specifier, working_source)?;
-        let artifact = ArtifactV1 {
+        let artifact = CachedArtifactFile {
             schema: SCHEMA.to_owned(),
             key,
             specifier,
@@ -131,7 +131,7 @@ impl Cache {
         if bytes.len() as u64 != metadata.len() {
             return None;
         }
-        let artifact: ArtifactV1 = serde_json::from_slice(&bytes).ok()?;
+        let artifact: CachedArtifactFile = serde_json::from_slice(&bytes).ok()?;
         if artifact.schema != SCHEMA
             || artifact.key != expected_key
             || artifact.specifier != expected_specifier

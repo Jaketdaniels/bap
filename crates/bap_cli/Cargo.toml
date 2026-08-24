@@ -13,6 +13,7 @@ path = "src/main.rs"
 bap_bench = { path = "../bap_bench" }
 bap_core = { path = "../bap_core" }
 bap_metrics = { path = "../bap_metrics" }
+bap_ops = { path = "../bap_ops" }
 bap_ts = { path = "../bap_ts" }
 clap = { version = "4", features = ["derive"] }
 rustyline = "18"
