@@ -50,7 +50,7 @@ jobs:
       - run: cargo build --release -p bap
       - name: 20-iteration smoke benchmark (report-only)
         run: |
-          target/release/bap bench bench/ssr/request.mjs --warmup 2 --iterations 20
+          target/release/bap bench bench/smoke.mjs --warmup 2 --iterations 20
 
   docs-freshness:
     runs-on: ubuntu-latest

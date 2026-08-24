@@ -7,7 +7,7 @@ audited numerics, and proof-specialized constants.
 ## Install
 
 Grab a prebuilt archive from [GitHub Releases](https://github.com/Jaketdaniels/bap/releases)
-(darwin arm64/x64, linux musl arm64/x64, windows msvc), or run the installer:
+(darwin arm64/x64, linux musl x64 + gnu arm64, windows msvc), or run the installer:
 
 ```sh
 curl -fsSL https://github.com/Jaketdaniels/bap/releases/latest/download/bap-installer.sh | sh
