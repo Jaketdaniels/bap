@@ -56,11 +56,20 @@ impl BapRuntime {
         let _guard = ISOLATE_INIT_LOCK
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let runtime = JsRuntime::new(RuntimeOptions {
+        let mut runtime = JsRuntime::new(RuntimeOptions {
             module_loader: Some(module_loader),
             extensions,
             ..Default::default()
         });
+        // Execute the embedded bootstrap scripts in order; they share the
+        // global lexical scope, matching deno_core's js-list behavior.
+        for (name, code) in bap_ops::BOOTSTRAP_SCRIPTS {
+            let script_name = deno_core::FastString::from((*name).to_owned());
+            let script_code = deno_core::ModuleCodeString::from((*code).to_owned());
+            runtime
+                .execute_script(script_name, script_code)
+                .expect("extension bootstrap script");
+        }
         drop(_guard);
         metrics.record_cold_start(started.elapsed());
         Self { runtime }

@@ -424,3 +424,22 @@ under parallel tests (12x threads=8 green after fix).
 Process note: python heredoc patching bit me THREE more times (silent no-op
 replacements); each cost a build cycle. Rule going forward: use edit tool
 with assert-style anchors for anything nontrivial.
+
+## 2026-08-24 — Fixed broken released binaries (root cause: extension js loading)
+
+The GitHub-installed binary crashed at JsRuntime::new with ENOENT. Root cause:
+deno_core 0.410's `extension!(js = [dir "src/js", ...])` registers files as
+LoadedFromFsDuringSnapshot — it embeds only the BUILD MACHINE's absolute path
+(CARGO_MANIFEST_DIR/...) and reads from disk on every startup. Local builds
+work (paths exist); CI-built binaries reference /Users/runner/work/... and die
+anywhere else. v0.1.0 and the first v0.2.0 tag were both affected; caught only
+because we finally ran an installed copy via the bootstrap script.
+
+Fix: drop `js = [...]` from the extension! and embed every script with
+include_str! into BOOTSTRAP_SCRIPTS; BapRuntime executes them in order right
+after isolate creation (separate classic scripts share the global lexical
+scope, so behavior is identical). Verified: release binary contains zero
+src/js path strings, full suite green.
+
+Lesson: test the ARTIFACT, not the checkout. Every prior verification ran a
+binary built in-repo where the missing files happened to exist.

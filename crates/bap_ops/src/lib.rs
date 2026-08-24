@@ -44,6 +44,24 @@ pub fn configure_v8_defaults() {
     v8::V8::set_flags_from_string("--stack-size=6000");
 }
 
+/// Extension bootstrap scripts, embedded at build time and executed in order
+/// during runtime construction. deno_core's `js = [dir ..]` registration only
+/// records build-machine paths, which breaks distributed binaries.
+pub const BOOTSTRAP_SCRIPTS: &[(&str, &str)] = &[
+    ("bap/console.js", include_str!("js/console.js")),
+    ("bap/encoding.js", include_str!("js/encoding.js")),
+    ("bap/numeric.js", include_str!("js/numeric.js")),
+    ("bap/cjs.js", include_str!("js/cjs.js")),
+    ("bap/node/path.js", include_str!("js/node/path.js")),
+    ("bap/node/fs.js", include_str!("js/node/fs.js")),
+    ("bap/node/assert.js", include_str!("js/node/assert.js")),
+    ("bap/node/util.js", include_str!("js/node/util.js")),
+    ("bap/node/events.js", include_str!("js/node/events.js")),
+    ("bap/node/buffer.js", include_str!("js/node/buffer.js")),
+    ("bap/node/process.js", include_str!("js/node/process.js")),
+    ("bap/runtime.js", include_str!("js/runtime.js")),
+];
+
 extension!(
     bap,
     ops = [
@@ -96,21 +114,7 @@ extension!(
         op_numeric_fixed_parse,
         op_numeric_fixed_binop
     ],
-    js = [
-        dir "src/js",
-        "console.js",
-        "encoding.js",
-        "numeric.js",
-        "cjs.js",
-        "node/path.js",
-        "node/fs.js",
-        "node/assert.js",
-        "node/util.js",
-        "node/events.js",
-        "node/buffer.js",
-        "node/process.js",
-        "runtime.js"
-    ],
+
     options = { metrics: MetricsCollector, args: Vec<String>, aliases: BTreeMap<String, String> },
     state = |state, config| {
         state.put(config.metrics);
