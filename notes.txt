@@ -340,3 +340,19 @@ proves executions happen; grep-verify every scripted patch before building.
   examples). main.rs is now 8 lines calling bap_cli::entry.
 - clap gotcha: Command::name borrows (&'static str in practice) — the
   generator leaks page-name strings, bounded by page count.
+
+## 2026-08-23 — cargo-dist wired (da7dbd9)
+
+- dist 0.32 init + tuned dist-workspace.toml: five targets (darwin arm64/x64,
+  linux MUSL arm64/x64 for static binaries, windows msvc), shell+ps1
+  installers, pr-run-mode=plan (PRs plan-only; uploads on tag pushes like
+  v0.1.0), generated .github/workflows/release.yml.
+- Renamed the CLI package to `bap` with [lib] name = "bap_cli" so artifacts
+  read bap-vX.Y.Z-<target>.tar.xz while internal imports stay untouched;
+  repository URL added to the package for installer metadata (placeholder
+  Jaketdaniels/bap — update if the canonical repo differs).
+- Verified locally: dist build emits tarball+checksums+installer.sh with bin
+  bap, LICENSE, README inside; plan covers all five platforms plus
+  source.tar.gz and sha256.sum.
+- Gotchas: github-release is now a table in 0.32 (boolean fails TOML parse);
+  package rename required -p bap in the mangen freshness test and example docs.
