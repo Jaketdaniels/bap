@@ -31,7 +31,7 @@ fn committed_man_pages_match_the_cli_definition() {
 
     // The example must still build and regenerate cleanly into a temp dir.
     let status = std::process::Command::new(env!("CARGO"))
-        .args(["build", "-q", "-p", "bap_cli", "--example", BIN_EXAMPLE])
+        .args(["build", "-q", "-p", "bap", "--example", BIN_EXAMPLE])
         .status()
         .expect("cargo build");
     assert!(status.success());
@@ -39,7 +39,7 @@ fn committed_man_pages_match_the_cli_definition() {
     let out_dir = tempfile::tempdir().unwrap();
     let generated = out_dir.path().join("bap.1");
     let status = std::process::Command::new(env!("CARGO"))
-        .args(["run", "-q", "-p", "bap_cli", "--example", BIN_EXAMPLE])
+        .args(["run", "-q", "-p", "bap", "--example", BIN_EXAMPLE])
         .arg(out_dir.path())
         .status()
         .expect("cargo run");
@@ -50,6 +50,6 @@ fn committed_man_pages_match_the_cli_definition() {
     assert_eq!(
         regenerated.matches(".SH").count(),
         committed.matches(".SH").count(),
-        "section structure drifted; run: cargo run -p bap_cli --example mangen -- docs/man"
+        "section structure drifted; run: cargo run -p bap --example mangen -- docs/man"
     );
 }

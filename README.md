@@ -4,6 +4,18 @@ Bap is a small V8-based JavaScript and TypeScript runtime written in Rust. It gi
 scripts a focused runtime surface for files, timers, TCP, HTTP fetches, metrics,
 audited numerics, and proof-specialized constants.
 
+## Install
+
+Grab a prebuilt archive from [GitHub Releases](https://github.com/Jaketdaniels/bap/releases)
+(darwin arm64/x64, linux musl arm64/x64, windows msvc), or run the installer:
+
+```sh
+curl -fsSL https://github.com/Jaketdaniels/bap/releases/latest/download/bap-installer.sh | sh
+```
+
+Releases are cut by pushing a version tag (`v0.1.0`); cargo-dist builds every
+platform, generates checksums and install scripts, and publishes the release.
+
 ## Build
 
 You need Rust 1.96 or newer and Node 22 for the proof-tool tests.

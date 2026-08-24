@@ -1,5 +1,6 @@
 [package]
-name = "bap_cli"
+repository = "https://github.com/Jaketdaniels/bap"
+name = "bap"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,6 +9,10 @@ license.workspace = true
 [[bin]]
 name = "bap"
 path = "src/main.rs"
+
+[lib]
+name = "bap_cli"
+path = "src/lib.rs"
 
 [dependencies]
 bap_bench = { path = "../bap_bench" }

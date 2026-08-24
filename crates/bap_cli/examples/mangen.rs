@@ -1,6 +1,6 @@
 //! Generates roff man pages for bap and every subcommand.
 //!
-//! Usage: `cargo run -p bap_cli --example mangen -- <output-dir>`
+//! Usage: `cargo run -p bap --example mangen -- <output-dir>`
 //! CI regenerates these and fails when docs/man/*.1 drift from the CLI.
 
 use clap_mangen::Man;
