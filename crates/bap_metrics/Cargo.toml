@@ -1,4 +1,5 @@
 [package]
+publish = false
 name = "bap_metrics"
 version.workspace = true
 edition.workspace = true

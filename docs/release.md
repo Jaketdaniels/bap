@@ -9,9 +9,12 @@ alongside Node, Bun, and Deno in the same release cycle.
   versions; deprecations are announced at least one minor before removal.
 - Conventional Commits (`feat`, `fix`, `chore`, `docs`, `refactor`, `test`)
   drive version decisions; `feat` bumps minor, `fix` patches.
-- `cargo-semver-checks` gates every CI run on the public lib crates
-  (`bap_core`, `bap_ts`, `bap_math`, `bap_metrics`, `bap_ops`); a semver
-  violation fails the build before a release can be cut.
+- No bap crate currently publishes to crates.io (distribution is GitHub
+  Releases), so the crates are marked `publish = false` and
+  `cargo-semver-checks` is not wired into CI. If a crate ever publishes,
+  re-enable the check with that crate's registry baseline before cutting
+  releases; until then API stability is enforced by review against the
+  [deprecation matrix](deprecation-matrix.md).
 
 ## LTS lines
 

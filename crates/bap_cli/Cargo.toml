@@ -1,4 +1,5 @@
 [package]
+publish = false
 repository = "https://github.com/Jaketdaniels/bap"
 name = "bap"
 version.workspace = true
