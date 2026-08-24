@@ -443,3 +443,21 @@ src/js path strings, full suite green.
 
 Lesson: test the ARTIFACT, not the checkout. Every prior verification ran a
 binary built in-repo where the missing files happened to exist.
+
+## 2026-08-24 — v0.2.0 re-released with working installed binaries
+
+End-to-end verification of the user path now passes: bootstrap -> bap 0.2.0
+installed -> setup writes completions/man/zshrc snippet -> `bap add left-pad`
+-> `require('left-pad')` runs from the INSTALLED binary.
+
+The original failure was two-layered: (1) bootstrap downloaded v0.1.0 whose
+CLI predates setup; script now probes for setup/install and degrades quietly;
+(2) deeper: every CI-built binary ever shipped crashed at JsRuntime::new with
+ENOENT because deno_core's extension!(js = [dir ..]) records build-machine
+absolute paths and reads them at startup. Fix embeds all scripts via
+include_str! (BOOTSTRAP_SCRIPTS) executed in order after isolate creation.
+Verified the release binary contains zero source-tree paths.
+
+Meta-lesson, twice earned today: verify the ARTIFACT a user actually runs,
+not a locally-built copy of the same commit. And when a patch tool reports
+success, grep the result before building on it.
