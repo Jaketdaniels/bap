@@ -1,6 +1,7 @@
 //! `bap doctor`: report which imports and requires Bap can satisfy.
 
 use crate::config::BapConfig;
+use crate::style;
 use bap_ts::shims::{IMPLEMENTED_NODE_BUILTINS, KNOWN_NODE_BUILTINS};
 use serde_json::json;
 use std::collections::BTreeSet;
@@ -90,20 +91,88 @@ pub fn doctor(json_output: bool) -> i32 {
         return 0;
     }
 
-    println!("bap doctor");
+    println!("{}", style::bold("bap doctor"));
     println!("  scanned {} source files", files.len());
     println!(
-        "  {total} unique dependencies; {supported} supported ({})",
+        "  {total} unique dependencies; {} ({})",
+        style::good(&format!("{supported} supported")),
         ratio(supported, total)
     );
+    if total > 0 {
+        println!("  {}", progress_bar(supported, total));
+    }
+    let mut gaps: Vec<&Dependency> = Vec::new();
     for dependency in &report {
         match dependency {
-            Dependency::Supported(name) => println!("  supported        node:{name}"),
-            Dependency::NotImplemented(name) => println!("  NOT IMPLEMENTED  node:{name}"),
-            other => println!("  {:<16} {}", other.status(), other.specifier()),
+            Dependency::Supported(name) => {
+                println!("  {} node:{name}", style::good("supported       "));
+            }
+            Dependency::NotImplemented(name) => {
+                gaps.push(dependency);
+                println!("  {} node:{name}", style::warn("NOT IMPLEMENTED "));
+            }
+            Dependency::Local => {
+                println!("  {} (relative path)", style::dim("local           "));
+            }
+            Dependency::Missing(name) => {
+                gaps.push(dependency);
+                println!("  {} {name}", style::bad("missing         "));
+            }
         }
     }
+    print_hints(&gaps);
     0
+}
+
+/// Ten-segment bar showing the supported share.
+fn progress_bar(supported: usize, total: usize) -> String {
+    let filled = if total == 0 {
+        10
+    } else {
+        (supported * 10).div_ceil(total)
+    };
+    let full = "\u{2588}".repeat(filled);
+    let empty = "\u{2591}".repeat(10 - filled);
+    format!("[{}{}]", style::good(&full), style::dim(&empty))
+}
+
+/// Next-step guidance per gap category; quiet when everything resolves.
+fn print_hints(gaps: &[&Dependency]) {
+    if gaps.is_empty() {
+        println!(
+            "  {}",
+            style::good("everything this project imports is available")
+        );
+        return;
+    }
+    println!("  {}", style::bold("next steps:"));
+    let missing: Vec<&str> = gaps
+        .iter()
+        .filter_map(|dependency| match dependency {
+            Dependency::Missing(name) => Some(name.as_str()),
+            _ => None,
+        })
+        .collect();
+    let unimplemented: Vec<&str> = gaps
+        .iter()
+        .filter_map(|dependency| match dependency {
+            Dependency::NotImplemented(name) => Some(name.as_str()),
+            _ => None,
+        })
+        .collect();
+    if !missing.is_empty() {
+        println!(
+            "   - map npm packages onto local files in bap.json aliases: {}",
+            missing.join(", ")
+        );
+    }
+    if !unimplemented.is_empty() {
+        println!(
+            "   - builtins not implemented on Bap yet: {}",
+            unimplemented.join(", ")
+        );
+        println!("     see docs/adoption.md for the migration pathway");
+    }
 }
 
 fn ratio(supported: usize, total: usize) -> String {

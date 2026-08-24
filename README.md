@@ -66,8 +66,12 @@ time with a clear message instead of misbehaving later.
 target/debug/bap run examples/node-style.js
 ```
 
-Projects adopt Bap per service through `bap.json` (`runtime`, optional
-`moduleFormat`, and bare-specifier `aliases`); `package.json` stays untouched.
+Start a project with `bap init` (scaffolds `bap.json`; prompts for a module
+format on a terminal). Projects adopt Bap per service through that same file
+(`runtime`, optional `moduleFormat`, and bare-specifier `aliases`);
+`package.json` stays untouched. Bare `bap run` runs the only script in the
+directory, or asks which one when there are several; typos in script names
+get a did-you-mean suggestion.
 `bap doctor` scans a project's imports and reports what is supported, what is
 not implemented, and what would need an alias — see [docs/adoption.md](docs/adoption.md).
 Measured compatibility over the pinned corpus ships via
@@ -83,6 +87,16 @@ Measures per-request latency across long-lived isolates with p50/p99
 histograms and optional chrome-trace output (`--trace out.json`). The
 cross-runtime comparison harness lives in `bench/ssr`; current numbers and
 methodology are in [docs/latency-report.md](docs/latency-report.md).
+
+## REPL
+
+```sh
+bap repl
+```
+
+Evaluate JavaScript with history and multi-line continuation. Dot commands:
+`.help`, `.metrics` (toggle timing output), `.clear`, `.exit`. BigInt results
+print as literals (`3n`).
 
 ## REPL and metrics
 

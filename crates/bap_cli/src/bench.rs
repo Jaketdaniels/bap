@@ -1,6 +1,7 @@
 //! `bap bench`: lane-based latency measurement for a script.
 
 use crate::cli::BenchFormat;
+use crate::style;
 use bap_bench::{self, BenchOptions};
 use std::path::PathBuf;
 
@@ -27,7 +28,13 @@ pub fn bench(
         args: script_args,
         env: Default::default(),
     };
-    let report = match bap_bench::run(options) {
+    let expected = u64::from(iterations);
+    let report = match bap_bench::run_with_progress(options, &|completed: u64| {
+        eprint!("\r  {} {completed}/{expected}", style::dim("running"));
+        if completed == expected {
+            eprintln!();
+        }
+    }) {
         Ok(report) => report,
         Err(error) => {
             eprintln!("bap: {error}");

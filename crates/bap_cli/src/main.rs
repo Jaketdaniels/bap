@@ -1,5 +1,5 @@
 //! bap command-line entry point.
-//! Parses arguments and dispatches to `run`, `repl`, or `inspect`.
+//! Parses arguments and dispatches to run, repl, init, inspect, doctor, bench, or report.
 
 #![forbid(unsafe_code)]
 
@@ -7,10 +7,13 @@ mod bench;
 mod cli;
 mod config;
 mod doctor;
+mod init;
 mod inspect;
 mod repl;
 mod report;
+mod resolve;
 mod run;
+mod style;
 
 use bap_metrics::MetricsCollector;
 use bap_ts::{ProofMode, TsModuleLoader};
@@ -28,6 +31,18 @@ fn main() {
             require_proofs,
             script_args,
         } => {
+            let script = match resolve::resolve_script(file.as_deref()) {
+                Ok(resolution) => {
+                    if let Some(note) = resolution.note() {
+                        println!("{note}");
+                    }
+                    resolution.path().to_path_buf()
+                }
+                Err(message) => {
+                    eprintln!("bap: {message}");
+                    std::process::exit(1);
+                }
+            };
             let proof_mode = if no_proofs {
                 ProofMode::Disabled
             } else if require_proofs {
@@ -53,7 +68,7 @@ fn main() {
                         config::ModuleFormat::Cjs => bap_ts::ModuleKind::CommonJs,
                     });
                     run::run_file(
-                        &file,
+                        &script.to_string_lossy(),
                         script_args,
                         loader,
                         project.aliases.clone(),
@@ -68,6 +83,15 @@ fn main() {
                 }
             }
         }
+        cli::Command::Init {
+            force,
+            format,
+            json,
+        } => init::init(
+            force,
+            format.and_then(|format| format.into_module_format()),
+            json,
+        ),
         cli::Command::Repl => match repl::run(cli.metrics, metrics) {
             Ok(()) => 0,
             Err(err) => {
@@ -75,7 +99,6 @@ fn main() {
                 1
             }
         },
-        cli::Command::Inspect { command } => inspect::inspect(command),
         cli::Command::Bench {
             file,
             warmup,
@@ -89,6 +112,7 @@ fn main() {
         cli::Command::Report { command } => match command {
             cli::ReportCommand::Compat { input } => report::report(input),
         },
+        cli::Command::Inspect { command } => inspect::inspect(command),
     };
     std::process::exit(code);
 }

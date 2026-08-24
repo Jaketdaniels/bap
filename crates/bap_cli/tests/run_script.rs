@@ -80,8 +80,8 @@ fn missing_file_exits_nonzero_with_bap_prefix() {
         .output()
         .expect("spawn bap");
     assert!(!out.status.success());
-    let stderr = String::from_utf8(out.stderr).unwrap();
-    assert!(stderr.contains("bap: load: "), "stderr was: {stderr}");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("bap: no such file"), "stderr was: {stderr}");
 }
 
 #[test]

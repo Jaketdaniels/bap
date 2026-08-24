@@ -75,8 +75,19 @@ impl BenchReport {
     }
 }
 
+/// Progress callback: receives the count of collected measured samples.
+pub type ProgressFn<'a> = &'a dyn Fn(u64);
+
 /// Executes the benchmark across lanes; each lane owns its thread and runtime.
 pub fn run(options: BenchOptions) -> Result<BenchReport, String> {
+    run_with_progress(options, &|_| {})
+}
+
+/// Like [`run`], reporting progress after every collected sample.
+pub fn run_with_progress(
+    options: BenchOptions,
+    progress: ProgressFn<'_>,
+) -> Result<BenchReport, String> {
     // Clamp once so lane threads see the same lane count as the spawner.
     let mut options = options;
     options.lanes = options.lanes.max(1);
@@ -92,6 +103,7 @@ pub fn run(options: BenchOptions) -> Result<BenchReport, String> {
     }
     let (sender, receiver) = mpsc::channel::<Result<RequestSample, String>>();
     let started = Instant::now();
+    let measured_target = u64::from(options.iterations);
 
     let handles: Vec<_> = (0..lanes)
         .map(|lane_id| {
@@ -111,12 +123,22 @@ pub fn run(options: BenchOptions) -> Result<BenchReport, String> {
     let mut measured_samples = Vec::new();
     let mut warmup_samples = Vec::new();
     let mut failures = Vec::new();
+    let mut collected = 0_u64;
     for message in receiver {
         match message {
-            Ok(sample) if sample.measured => measured_samples.push(sample),
+            Ok(sample) if sample.measured => {
+                measured_samples.push(sample);
+                collected += 1;
+                progress(collected);
+            }
             Ok(sample) => warmup_samples.push(sample),
             Err(error) => failures.push(error),
         }
+    }
+    if collected < measured_target && failures.is_empty() {
+        return Err(format!(
+            "lanes produced {collected} of {measured_target} requested iterations"
+        ));
     }
     for handle in handles {
         handle

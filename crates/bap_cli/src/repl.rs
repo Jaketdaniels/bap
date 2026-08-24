@@ -2,6 +2,7 @@
 
 use crate::cli::MetricsFormat;
 use crate::run::report;
+use crate::style;
 use bap_core::BapRuntime;
 use bap_metrics::MetricsCollector;
 use rustyline::DefaultEditor;
@@ -19,7 +20,12 @@ pub fn run(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut runtime = BapRuntime::new(metrics.clone());
     if std::io::stdin().is_terminal() {
-        println!("bap {} — .exit to quit", env!("CARGO_PKG_VERSION"));
+        let version = env!("CARGO_PKG_VERSION");
+        println!(
+            "{} {version} - {}",
+            style::bold("bap"),
+            style::dim("type .help for commands, Ctrl-D to quit")
+        );
         run_interactive(&mut runtime, &metrics)?;
     } else {
         let errored = run_piped(&mut runtime, &metrics)?;
@@ -50,7 +56,7 @@ fn eval_line(
             true
         }
         Err(err) => {
-            eprintln!("{err}");
+            eprintln!("{} {err}", style::bad("error:"));
             false
         }
     };
@@ -156,42 +162,112 @@ fn skip_template(chars: &mut Peekable<Chars<'_>>) -> bool {
     false
 }
 
+/// Handles a dot command; returns false when the session should end.
+fn handle_dot_command(command: &str, verbose: &mut bool) -> bool {
+    match command {
+        ".help" => {
+            println!("{}", style::bold("commands:"));
+            println!(
+                "  {}  evaluate JavaScript; multi-line input continues until balanced",
+                style::accent("<code>")
+            );
+            println!("  {}  show this list", style::accent(".help"));
+            println!(
+                "  {}  toggle per-evaluation timing output (currently {})",
+                style::accent(".metrics"),
+                if *verbose { "on" } else { "off" }
+            );
+            println!("  {} clear the screen", style::accent(".clear"));
+            println!("  {} leave the REPL", style::accent(".exit"));
+        }
+        ".metrics" => {
+            *verbose = !*verbose;
+            println!(
+                "timing output {}",
+                if *verbose {
+                    style::good("on")
+                } else {
+                    style::warn("off")
+                }
+            );
+        }
+        ".clear" => {
+            print!("\u{1b}[2J\u{1b}[H");
+            let _ = std::io::Write::flush(&mut std::io::stdout());
+        }
+        ".exit" => return false,
+        other => {
+            eprintln!(
+                "{} unknown command {other}; try .help",
+                style::bad("error:")
+            );
+        }
+    }
+    true
+}
+
 /// Readline loop with `bap>` and `bap*` prompts; `.exit` ends the session.
 fn run_interactive(runtime: &mut BapRuntime, metrics: &MetricsCollector) -> rustyline::Result<()> {
     let mut editor = DefaultEditor::new()?;
     let mut pending = String::new();
+    let mut verbose = true;
     loop {
-        let prompt = if pending.is_empty() { "bap> " } else { "bap* " };
-        match editor.readline(prompt) {
+        let prompt = if pending.is_empty() {
+            style::accent("bap> ")
+        } else {
+            style::accent("bap* ")
+        };
+        match editor.readline(&prompt) {
             Ok(line) => {
-                if line.trim() == ".exit" {
-                    break;
+                let _ = editor.add_history_entry(line.trim());
+                let trimmed = line.trim();
+                if trimmed.starts_with('.') && pending.is_empty() && is_dot_command(trimmed) {
+                    if !handle_dot_command(trimmed, &mut verbose) {
+                        break;
+                    }
+                    continue;
                 }
                 pending.push_str(&line);
                 if !is_complete(&pending) {
                     continue;
                 }
                 let code = std::mem::take(&mut pending);
-                eval_line(runtime, metrics, &code, true);
+                eval_line(runtime, metrics, &code, verbose);
             }
-            Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => break,
+            Err(ReadlineError::Interrupted) => {
+                pending.clear();
+            }
+            Err(ReadlineError::Eof) => break,
             Err(err) => return Err(err),
         }
     }
     Ok(())
 }
 
+fn is_dot_command(line: &str) -> bool {
+    matches!(line, ".help" | ".metrics" | ".clear" | ".exit") || line.starts_with(".metrics ")
+}
+
 /// Evaluates each non-empty stdin line without timing output.
+/// Dot commands behave as in interactive mode.
 /// Returns true when any line errored.
 fn run_piped(runtime: &mut BapRuntime, metrics: &MetricsCollector) -> std::io::Result<bool> {
     let stdin = std::io::stdin();
     let mut errored = false;
+    let mut verbose = false;
     for line in stdin.lock().lines() {
         let line = line?;
-        if line.trim() == ".exit" {
+        let trimmed = line.trim();
+        if trimmed == ".exit" {
             break;
         }
-        if !line.trim().is_empty() && !eval_line(runtime, metrics, &line, false) {
+        if !trimmed.is_empty() && is_dot_command(trimmed) {
+            if !handle_dot_command(trimmed, &mut verbose) {
+                break;
+            }
+            continue;
+        }
+        if !trimmed.is_empty() && !eval_line(runtime, metrics, &line, verbose) {
             errored = true;
         }
     }

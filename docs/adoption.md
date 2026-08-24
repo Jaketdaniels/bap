@@ -5,6 +5,8 @@ editor setup stay untouched while you evaluate it per service.
 
 ## The pathway
 
+0. **Scaffold the config.** Run `bap init` in the service directory; it
+   writes a minimal `bap.json` and points you at the next step.
 1. **Run the existing test suite under Bap.** Point your runner at `bap run` for
    each test file (or a thin wrapper script). Most failures at this stage are
    missing Node builtins.

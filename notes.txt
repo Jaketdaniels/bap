@@ -311,3 +311,20 @@ unhandled rejections (exit 1), timer throws (exit 1), and trace validity.
 Methodology reminders that saved/burned time this pass: PIPESTATUS for exit
 codes through pipes; never trust benchmark numbers until a counter fixture
 proves executions happen; grep-verify every scripted patch before building.
+
+## 2026-08-23 — Interactive CLI pass (this commit)
+
+- New: `bap init` (default scaffold, --force, --format esm|cjs|auto, --json,
+  interactive prompt on TTY). New resolve.rs: bare `bap run` auto-runs the only
+  script, numbered picker on TTY, candidate list otherwise; did-you-mean via
+  Wagner-Fischer (distance<=2 or prefix). Doctor gains colored categories,
+  [██████░░░░] bar, and per-gap next-step hints; --json unchanged. REPL adds
+  .help/.metrics/.clear dot commands (piped mode honors them too), Ctrl-C now
+  clears the pending buffer instead of losing it, error lines prefixed.
+  Bench prints sample progress to stderr so pipes stay clean.
+
+- Gotchas hit: Box::leak prompt leaked per iteration (rustyline wants &str;
+  own the String); style cache means NO_COLOR tests must target the pure
+  decision fn; doctor label padding drifted one column when I restyled
+  ("NOT IMPLEMENTED" needed its trailing space inside the styled string);
+  piped REPL originally ignored dot commands entirely.
