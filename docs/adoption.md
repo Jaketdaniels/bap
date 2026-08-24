@@ -15,13 +15,15 @@ editor setup stay untouched while you evaluate it per service.
 
    - `supported` — served by Bap's `node:` shim today;
    - `NOT IMPLEMENTED` — a Node builtin Bap knows about but does not ship yet;
-   - `missing` — a bare npm package; map it locally or wait for the package
-     manager milestone;
+   - `missing` — a bare npm package that is neither installed nor aliased;
+     run `bap add <name>`
    - `local` — relative paths and configured aliases, checked on disk when run.
 
    Add `--json` for machine-readable output.
-3. **Close gaps with aliases.** For small dependencies, vendor the module and
-   map it in `bap.json`; larger gaps become upstream feature requests.
+3. **Install the npm packages you do need.** `bap add left-pad` resolves from
+   the registry, verifies integrity, and installs into `node_modules/`;
+   `require('pkg')` and `import from 'pkg'` resolve automatically. For small
+   dependencies you would rather vendor, aliases still work.
 4. **Flip the runtime config per service.** Each service that passes its suite
    declares `"runtime": "bap"` in its own `bap.json`. Nothing else changes:
    same scripts, same CI, same container entrypoints.

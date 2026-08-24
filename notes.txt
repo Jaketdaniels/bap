@@ -400,3 +400,27 @@ mutation by injecting home/data paths directly. Debug-vs-release confusion
 cost time again when a lib signature change and bin caller briefly disagreed:
 the real story was my earlier python patch silently not applying to lib.rs;
 grep-verify patches BEFORE blaming caches.
+
+## 2026-08-24 — Package manager shipped (f70b7ac + this commit)
+
+v0.2 headline: `bap add left-pad@1.3.0` works against the real registry.
+New bap_pm crate (packuments, semver pick, sha512-SRI verify, hardened
+tarball extraction rejecting absolute/.. /symlink entries, deterministic
+bap-lock.json). Loader resolves bare specifiers via node_modules walk-up on
+both require() and ESM import paths; fixed a latent resolver bug where
+directories passed the "file" probe (stat ops now carry isDir/isFile).
+CLI: bap install [specs] | bap add | bap remove. Verified end-to-end against
+registry.npmjs.org AND a hermetic fixture registry test suite.
+
+Design honesty: resolution is FLAT and strict - conflicting version ranges
+for one package abort with requirers listed rather than nesting copies.
+Documented as v0.2 scope; nesting is future work if real corpora demand it.
+
+Also landed this session while wiring upgrade: rustls-tls enabled so HTTPS
+fetch finally works project-wide, fetch sends User-Agent, stat ops expose
+type flags, isolate creation serialized to kill an intermittent V8 SIGABRT
+under parallel tests (12x threads=8 green after fix).
+
+Process note: python heredoc patching bit me THREE more times (silent no-op
+replacements); each cost a build cycle. Rule going forward: use edit tool
+with assert-style anchors for anything nontrivial.
