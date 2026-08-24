@@ -4,7 +4,7 @@
 .SH NAME
 bap \- Bap Runtime: a V8 JavaScript and TypeScript runtime
 .SH SYNOPSIS
-\fBbap\fR [\fB\-\-metrics\fR] [\fB\-\-log\-level\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIsubcommands\fR>
+\fBbap\fR [\fB\-\-metrics\fR] [\fB\-\-log\-level\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fIsubcommands\fR]
 .SH DESCRIPTION
 Bap Runtime: a V8 JavaScript and TypeScript runtime
 .SH OPTIONS
@@ -35,11 +35,26 @@ Print version
 bap\-run(1)
 Run a JavaScript or TypeScript file (bare `bap run` picks one)
 .TP
+bap\-repl(1)
+Start an interactive REPL
+.TP
 bap\-init(1)
 Scaffold a bap.json for this project
 .TP
-bap\-repl(1)
-Start an interactive REPL
+bap\-setup(1)
+Configure this machine: completions and man pages
+.TP
+bap\-upgrade(1)
+Update bap to the latest GitHub release
+.TP
+bap\-install(1)
+Install packages into node_modules (reads package.json with no specs)
+.TP
+bap\-add(1)
+Add packages to package.json and install them
+.TP
+bap\-remove(1)
+Remove packages from package.json and node_modules
 .TP
 bap\-doctor(1)
 Diagnose a project\*(Aqs compatibility with Bap

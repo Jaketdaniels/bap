@@ -1,0 +1,26 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH bap-setup 1  "bap-setup " 
+.SH NAME
+bap\-setup \- Configure this machine: completions and man pages
+.SH SYNOPSIS
+\fBbap\-setup\fR [\fB\-\-dry\-run\fR] [\fB\-\-zshrc\fR] [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Configure this machine: completions and man pages
+.SH OPTIONS
+.TP
+\fB\-\-dry\-run\fR
+Show what would be written without writing anything
+.TP
+\fB\-\-zshrc\fR
+Also append an fpath snippet to ~/.zshrc for zsh completions
+.TP
+\fB\-\-json\fR
+Print machine\-readable JSON
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH EXTRA
+Examples:
+  bap setup               # write completions + man pages, print PATH advice
+  bap setup \-\-dry\-run     # show what would change

@@ -8,11 +8,14 @@ audited numerics, and proof-specialized constants.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Jaketdaniels/bap/main/scripts/bootstrap.sh | sh
-bap run examples/hello.ts
+bap add left-pad        # installs into node_modules/ + writes bap-lock.json
+bap run app.js          # require('left-pad') just works
 ```
 
-The first command installs bap **and** configures it: shell completions for
-bash/zsh/fish, man pages, and PATH advice. Keeping current is one word:
+The bootstrap command installs bap **and** configures it: shell completions,
+man pages, PATH advice. Packages install with `bap add <pkg>[@range]`,
+`bap install` (from package.json), and remove with `bap remove`. Keeping bap
+current is one word:
 
 ```sh
 bap upgrade          # fetches and swaps in the latest release

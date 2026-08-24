@@ -1,0 +1,19 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH bap-add 1  "bap-add " 
+.SH NAME
+bap\-add \- Add packages to package.json and install them
+.SH SYNOPSIS
+\fBbap\-add\fR [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fISPECS\fR> 
+.SH DESCRIPTION
+Add packages to package.json and install them
+.SH OPTIONS
+.TP
+\fB\-\-json\fR
+Print machine\-readable JSON
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fISPECS\fR>
+Package specs, e.g. left\-pad, @scope/pkg@^2
