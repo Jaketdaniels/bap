@@ -272,3 +272,30 @@ fn inspect_exits_nonzero_on_mismatch() {
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(stdout.contains("TS2345"), "stdout was: {stdout}");
 }
+
+#[test]
+fn inspect_reports_non_typescript_as_not_applicable() {
+    let out = command()
+        .args([
+            "inspect",
+            "proofs",
+            &fixture("../cjs/local.cjs").replace("/cjs/", "/"),
+        ])
+        .output()
+        .unwrap();
+    let _ = out;
+    let path = format!(
+        "{}/tests/fixtures/cjs/local.cjs",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let out = command()
+        .args(["inspect", "proofs", &path])
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1));
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("not applicable: proofs apply to TypeScript modules"),
+        "{stdout}"
+    );
+}

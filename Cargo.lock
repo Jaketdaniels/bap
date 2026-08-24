@@ -156,6 +156,7 @@ dependencies = [
  "bap_bench",
  "bap_core",
  "bap_metrics",
+ "bap_ops",
  "bap_ts",
  "clap",
  "rustyline",

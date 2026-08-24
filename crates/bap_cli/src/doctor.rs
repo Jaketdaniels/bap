@@ -169,11 +169,15 @@ fn extract_specifiers(source: &str) -> Vec<String> {
             "import(\"",
             "import('",
         ] {
-            if let Some(specifier) = trimmed
-                .find(pattern)
-                .and_then(|position| quoted_after(&trimmed[position + pattern.len()..]))
-            {
-                found.push(specifier);
+            // Every occurrence per line: `import a from "x"; import b from "y"`
+            // must yield both specifiers.
+            let mut cursor = 0usize;
+            while let Some(offset) = trimmed[cursor..].find(pattern) {
+                let start = cursor + offset + pattern.len();
+                if let Some(specifier) = quoted_after(&trimmed[start..]) {
+                    found.push(specifier);
+                }
+                cursor = start;
             }
         }
         if (trimmed.starts_with("import \"") || trimmed.starts_with("import '"))

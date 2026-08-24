@@ -223,3 +223,11 @@ fn unit_helpers_reject_forged_values() {
     ));
     assert!(err.contains("BAP_NUMERIC_INVALID_ARGUMENT"), "was: {err}");
 }
+
+#[test]
+fn eval_surfaces_bigints_as_literals() {
+    let value = eval_value("bap.numeric.i64Add(1n, 2n)");
+    assert_eq!(value, serde_json::json!("3n"));
+    let big = eval_value("2n ** 100n");
+    assert_eq!(big, serde_json::json!("1267650600228229401496703205376n"));
+}

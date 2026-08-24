@@ -112,6 +112,19 @@ impl BapRuntime {
         if local.is_undefined() {
             return Ok(None);
         }
+        // BigInt has no JSON representation; surface it as the literal the
+        // user would write ("42n") instead of failing the whole evaluation.
+        if local.is_big_int() {
+            let text = local
+                .to_string(scope)
+                .map(|string| string.to_rust_string_lossy(scope))
+                .ok_or_else(|| {
+                    Error::eval(deno_core::anyhow::anyhow!(
+                        "bigint could not be stringified"
+                    ))
+                })?;
+            return Ok(Some(Value::String(format!("{text}n"))));
+        }
         Ok(Some(
             serde_v8::from_v8::<Value>(scope, local).map_err(Error::eval)?,
         ))

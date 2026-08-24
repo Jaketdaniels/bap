@@ -110,8 +110,10 @@ bap.numeric.i64Add(9223372036854775806n, 1n); // exact 64-bit math
 bap.numeric.fixedAdd("12.3456", "0.0001"); // "12.3457", half-even rounding
 ```
 
-Intervals and unit values are frozen objects branded by `bap.numeric`; passing
-forged lookalikes throws `TypeError: BAP_NUMERIC_INVALID_ARGUMENT`. Numeric
+Infinite interval bounds are valid (interval arithmetic allows `[1, +Infinity)`),
+but NaN bounds throw. Intervals and unit values are frozen objects branded by
+`bap.numeric`; passing forged lookalikes throws
+`TypeError: BAP_NUMERIC_INVALID_ARGUMENT`. Numeric
 failures surface as `RangeError` with stable codes such as
 `BAP_NUMERIC_OVERFLOW` and `BAP_NUMERIC_DISCONTINUOUS`. Batch helpers
 (`intervalAddBatch`, `i64AddBatch`, ...) cross into Rust once per call and

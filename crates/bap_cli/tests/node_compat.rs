@@ -447,3 +447,145 @@ fn bench_reports_histogram_and_trace() {
     std::fs::remove_dir_all(&dir).ok();
     assert_eq!(trace["traceEvents"].as_array().unwrap().len(), 4);
 }
+
+#[test]
+fn bap_json_accepts_documented_camel_case_keys() {
+    let dir = std::env::temp_dir().join(format!("bap_cfg_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("bap.json"),
+        r#"{ "runtime": "bap", "moduleFormat": "esm", "aliases": {} }"#,
+    )
+    .unwrap();
+    std::fs::write(dir.join("x.js"), "console.log('cfg ok');\n").unwrap();
+
+    let out = Command::new(BIN)
+        .args(["run", "x.js"])
+        .env("BAP_TS_CACHE_DIR", tempfile::tempdir().unwrap().path())
+        .current_dir(&dir)
+        .output()
+        .expect("spawn bap");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let doctor = Command::new(BIN)
+        .arg("doctor")
+        .current_dir(&dir)
+        .output()
+        .expect("spawn bap");
+    std::fs::remove_dir_all(&dir).ok();
+    assert!(
+        doctor.status.success(),
+        "{}",
+        String::from_utf8_lossy(&doctor.stderr)
+    );
+}
+
+#[test]
+fn doctor_counts_every_import_on_a_line() {
+    let dir = std::env::temp_dir().join(format!("bap_multi_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("m.js"),
+        "import a from 'node:path'; import b from 'left-pad';\n",
+    )
+    .unwrap();
+
+    let out = Command::new(BIN)
+        .args(["doctor", "--json"])
+        .current_dir(&dir)
+        .output()
+        .expect("spawn bap");
+    std::fs::remove_dir_all(&dir).ok();
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(report["dependencies"], 2);
+    assert_eq!(report["supported"], 1);
+}
+
+#[test]
+fn bench_names_missing_targets_clearly() {
+    let out = Command::new(BIN)
+        .args(["bench", "/definitely/not/here.mjs", "--iterations", "1"])
+        .output()
+        .expect("spawn bap");
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("does not exist or is not a file"),
+        "stderr was: {stderr}"
+    );
+}
+
+#[test]
+fn require_flavors_report_precise_errors() {
+    let dir = std::env::temp_dir().join(format!("bap_reqmsg_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+
+    let cases = [
+        (
+            "case.cjs",
+            "require('NODE:PATH');\n",
+            "node:PATH is not implemented on Bap",
+        ),
+        (
+            "empty.cjs",
+            "require('');\n",
+            "needs a non-empty module specifier",
+        ),
+    ];
+    for (name, source, expected) in cases {
+        let file = dir.join(name);
+        std::fs::write(&file, source).unwrap();
+        let out = Command::new(BIN)
+            .args(["run", file.to_str().unwrap()])
+            .env("BAP_TS_CACHE_DIR", tempfile::tempdir().unwrap().path())
+            .output()
+            .expect("spawn bap");
+        assert!(!out.status.success(), "{name} should fail");
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(stderr.contains(expected), "{name}: {stderr}");
+    }
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn bench_tolerates_zero_lanes_and_zero_iterations() {
+    let dir = std::env::temp_dir().join(format!("bap_benchzero_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let script = dir.join("unit.mjs");
+    std::fs::write(&script, "globalThis.touched = true;\n").unwrap();
+    let cache = tempfile::tempdir().unwrap();
+
+    let lanes = Command::new(BIN)
+        .args([
+            "bench",
+            script.to_str().unwrap(),
+            "--iterations",
+            "2",
+            "--lanes",
+            "0",
+            "--format",
+            "json",
+        ])
+        .env("BAP_TS_CACHE_DIR", cache.path())
+        .output()
+        .expect("spawn bap");
+    assert!(
+        lanes.status.success(),
+        "{}",
+        String::from_utf8_lossy(&lanes.stderr)
+    );
+    let report: serde_json::Value = serde_json::from_slice(&lanes.stdout).unwrap();
+    assert_eq!(report["count"], 2);
+    assert_eq!(report["laneHeaps"].as_array().unwrap().len(), 1);
+
+    let empty = Command::new(BIN)
+        .args(["bench", script.to_str().unwrap(), "--iterations", "0"])
+        .env("BAP_TS_CACHE_DIR", cache.path())
+        .output()
+        .expect("spawn bap");
+    std::fs::remove_dir_all(&dir).ok();
+    assert!(empty.status.success());
+}

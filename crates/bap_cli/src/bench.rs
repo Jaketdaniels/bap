@@ -14,8 +14,13 @@ pub fn bench(
     trace: Option<String>,
     format: BenchFormat,
 ) -> i32 {
+    let script_path = PathBuf::from(&file);
+    if !script_path.is_file() {
+        eprintln!("bap: bench target {} does not exist or is not a file", file);
+        return 1;
+    }
     let options = BenchOptions {
-        script: PathBuf::from(&file),
+        script: script_path,
         warmup,
         iterations,
         lanes,

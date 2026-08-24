@@ -14,6 +14,22 @@ pub fn inspect(command: InspectCommand) -> i32 {
 }
 
 fn inspect_proofs(file: &str, json_output: bool) -> i32 {
+    let extension = Path::new(file)
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .unwrap_or_default();
+    if !matches!(extension, "ts" | "mts") {
+        report(
+            json_output,
+            json!({
+                "file": file,
+                "status": "not-applicable",
+                "detail": "proofs apply to TypeScript modules (.ts/.mts)",
+            }),
+            "not applicable: proofs apply to TypeScript modules (.ts/.mts)",
+        );
+        return 1;
+    }
     let source = match std::fs::read_to_string(file) {
         Ok(source) => source,
         Err(error) => {

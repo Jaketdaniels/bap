@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 /// Per-service runtime config; `package.json` stays untouched.
 #[derive(Debug, Clone, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct BapConfig {
     /// Declares intent only today; the value is validated but advisory.
     #[serde(default)]
