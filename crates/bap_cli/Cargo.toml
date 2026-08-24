@@ -16,6 +16,7 @@ bap_metrics = { path = "../bap_metrics" }
 bap_ops = { path = "../bap_ops" }
 bap_ts = { path = "../bap_ts" }
 clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
 rustyline = "18"
 serde.workspace = true
 serde_json.workspace = true
@@ -23,4 +24,5 @@ tokio = { version = "1", features = ["full"] }
 tracing.workspace = true
 
 [dev-dependencies]
+clap_mangen = "0.3.3"
 tempfile = "3"

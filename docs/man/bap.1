@@ -1,0 +1,64 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH bap 1  "bap 0.1.0" 
+.SH NAME
+bap \- Bap Runtime: a V8 JavaScript and TypeScript runtime
+.SH SYNOPSIS
+\fBbap\fR [\fB\-\-metrics\fR] [\fB\-\-log\-level\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+Bap Runtime: a V8 JavaScript and TypeScript runtime
+.SH OPTIONS
+.TP
+\fB\-\-metrics\fR \fI<METRICS>\fR [default: pretty]
+metrics report format
+.br
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+pretty
+.IP \(bu 2
+json
+.RE
+.TP
+\fB\-\-log\-level\fR \fI<LOG_LEVEL>\fR
+tracing filter, e.g. debug
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
+.SH SUBCOMMANDS
+.TP
+bap\-run(1)
+Run a JavaScript or TypeScript file (bare `bap run` picks one)
+.TP
+bap\-init(1)
+Scaffold a bap.json for this project
+.TP
+bap\-repl(1)
+Start an interactive REPL
+.TP
+bap\-doctor(1)
+Diagnose a project\*(Aqs compatibility with Bap
+.TP
+bap\-bench(1)
+Measure script latency across pinned isolates
+.TP
+bap\-report(1)
+Print measured reports
+.TP
+bap\-inspect(1)
+Inspect runtime artifacts
+.TP
+bap\-complete(1)
+Emit a shell completion script for bap
+.TP
+bap\-help(1)
+Print this message or the help of the given subcommand(s)
+.SH EXTRA
+Run `bap <command> \-\-help` for details. New here? Try `bap init` then `bap run`.
+.SH VERSION
+v0.1.0

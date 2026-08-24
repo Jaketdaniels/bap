@@ -77,6 +77,21 @@ not implemented, and what would need an alias — see [docs/adoption.md](docs/ad
 Measured compatibility over the pinned corpus ships via
 `bench/compat/run.sh` and `target/debug/bap report compat`.
 
+## Completions and manual
+
+```sh
+# zsh
+mkdir -p ~/.zfunc && bap complete zsh > ~/.zfunc/_bap   # add ~/.zfunc to fpath
+# bash
+bap complete bash > ~/.local/share/bash-completion/completions/bap
+# fish
+bap complete fish > ~/.config/fish/completions/bap.fish
+
+# man pages (committed under docs/man, regenerated with the example below)
+install -Dm644 docs/man/bap.1 ~/.local/share/man/man1/bap.1
+cargo run -p bap_cli --example mangen -- docs/man   # regenerate all pages
+```
+
 ## Benchmarking
 
 ```sh

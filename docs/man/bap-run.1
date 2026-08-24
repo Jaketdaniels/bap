@@ -1,0 +1,30 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH bap-run 1  "bap-run " 
+.SH NAME
+bap\-run \- Run a JavaScript or TypeScript file (bare `bap run` picks one)
+.SH SYNOPSIS
+\fBbap\-run\fR [\fB\-\-no\-proofs\fR] [\fB\-\-require\-proofs\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fIFILE\fR] [\fISCRIPT_ARGS\fR] 
+.SH DESCRIPTION
+Run a JavaScript or TypeScript file (bare `bap run` picks one)
+.SH OPTIONS
+.TP
+\fB\-\-no\-proofs\fR
+Never consult the TypeScript proof backend
+.TP
+\fB\-\-require\-proofs\fR
+Fail when a recognized proof candidate does not prove
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+[\fIFILE\fR]
+Path to a JavaScript or TypeScript file
+.TP
+[\fISCRIPT_ARGS\fR]
+arguments passed to the script (use `\-\-` before dash\-args)
+.SH EXTRA
+Examples:
+  bap run server.js \-\- port 8080
+  bap run            # runs the only script in this directory
+  bap run \-\-require\-proofs route.ts

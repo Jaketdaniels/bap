@@ -328,3 +328,15 @@ proves executions happen; grep-verify every scripted patch before building.
   decision fn; doctor label padding drifted one column when I restyled
   ("NOT IMPLEMENTED" needed its trailing space inside the styled string);
   piped REPL originally ignored dot commands entirely.
+
+## 2026-08-23 — Completions & man pages (this commit)
+
+- `bap complete <bash|elvish|fish|powershell|zsh>` via clap_complete; --out
+  writes to a file. Man pages: clap_mangen through examples/mangen.rs,
+  rendering bap.1 plus one page per subcommand path (bap-run.1, ...);
+  committed under docs/man and freshness-gated in CI (regenerate + cmp).
+- Restructured bap_cli into lib + thin bin so the example can reuse the real
+  parser definition (bin-only crates cannot be referenced by their own
+  examples). main.rs is now 8 lines calling bap_cli::entry.
+- clap gotcha: Command::name borrows (&'static str in practice) — the
+  generator leaks page-name strings, bounded by page count.

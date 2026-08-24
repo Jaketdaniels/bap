@@ -35,6 +35,11 @@ impl InitFormat {
     }
 }
 
+/// Builds the root clap command for generators (completions, man pages).
+pub fn root_command() -> clap::Command {
+    <Cli as clap::CommandFactory>::command()
+}
+
 /// Parsed `bap` command-line interface.
 #[derive(Parser)]
 #[command(
@@ -135,6 +140,15 @@ pub enum Command {
     Inspect {
         #[command(subcommand)]
         command: InspectCommand,
+    },
+    /// Emit a shell completion script for bap
+    Complete {
+        /// Shell to generate completions for.
+        #[arg(value_enum)]
+        shell: clap_complete::Shell,
+        /// Write to this file instead of stdout.
+        #[arg(long)]
+        out: Option<String>,
     },
 }
 

@@ -1,0 +1,48 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH bap-bench 1  "bap-bench " 
+.SH NAME
+bap\-bench \- Measure script latency across pinned isolates
+.SH SYNOPSIS
+\fBbap\-bench\fR [\fB\-\-warmup\fR] [\fB\-\-iterations\fR] [\fB\-\-lanes\fR] [\fB\-\-trace\fR] [\fB\-\-format\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIFILE\fR> [\fISCRIPT_ARGS\fR] 
+.SH DESCRIPTION
+Measure script latency across pinned isolates
+.SH OPTIONS
+.TP
+\fB\-\-warmup\fR \fI<WARMUP>\fR [default: 0]
+Unmeasured executions per lane before measuring
+.TP
+\fB\-\-iterations\fR \fI<ITERATIONS>\fR [default: 100]
+Measured requests distributed round\-robin across lanes
+.TP
+\fB\-\-lanes\fR \fI<LANES>\fR [default: 1]
+Long\-lived isolates; each owns a thread
+.TP
+\fB\-\-trace\fR \fI<TRACE>\fR
+Write a chrome\-trace JSON document to this path
+.TP
+\fB\-\-format\fR \fI<FORMAT>\fR [default: pretty]
+Output format
+.br
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+pretty
+.IP \(bu 2
+json
+.RE
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIFILE\fR>
+Script executed once per request
+.TP
+[\fISCRIPT_ARGS\fR]
+arguments passed to the script (use `\-\-` before dash\-args)
+.SH EXTRA
+Examples:
+  bap bench bench/ssr/request.mjs \-\-warmup 10 \-\-iterations 200 \-\-lanes 3
+  bap bench unit.mjs \-\-trace trace.json

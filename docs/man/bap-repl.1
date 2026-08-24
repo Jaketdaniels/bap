@@ -1,0 +1,19 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH bap-repl 1  "bap-repl " 
+.SH NAME
+bap\-repl \- Start an interactive REPL
+.SH SYNOPSIS
+\fBbap\-repl\fR [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Start an interactive REPL
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH EXTRA
+Dot commands inside the REPL:
+  .help    list commands
+  .metrics toggle timing output
+  .clear   clear the screen
+  .exit    leave the REPL (Ctrl\-D also works)

@@ -1,0 +1,38 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH bap-init 1  "bap-init " 
+.SH NAME
+bap\-init \- Scaffold a bap.json for this project
+.SH SYNOPSIS
+\fBbap\-init\fR [\fB\-\-force\fR] [\fB\-\-format\fR] [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Scaffold a bap.json for this project
+.SH OPTIONS
+.TP
+\fB\-\-force\fR
+Overwrite an existing bap.json
+.TP
+\fB\-\-format\fR \fI<FORMAT>\fR
+Pin the module format instead of auto\-detecting per file
+.br
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+auto
+.IP \(bu 2
+esm
+.IP \(bu 2
+cjs
+.RE
+.TP
+\fB\-\-json\fR
+Print machine\-readable JSON
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH EXTRA
+Examples:
+  bap init
+  bap init \-\-format cjs \-\-force

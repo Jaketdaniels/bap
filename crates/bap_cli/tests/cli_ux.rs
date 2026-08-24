@@ -190,3 +190,40 @@ fn help_shows_init_and_examples() {
     let run_text = String::from_utf8_lossy(&run_help.stdout);
     assert!(run_text.contains("Examples:"), "{run_text}");
 }
+
+#[test]
+fn complete_emits_scripts_for_each_shell() {
+    let cases = [
+        ("bash", "_bap()"),
+        ("zsh", "#compdef bap"),
+        ("fish", "complete"),
+        ("powershell", "Register-ArgumentCompleter"),
+    ];
+    for (shell, marker) in cases {
+        let out = Command::new(BIN)
+            .args(["complete", shell])
+            .output()
+            .expect("spawn bap");
+        assert!(
+            out.status.success(),
+            "{shell}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let script = String::from_utf8_lossy(&out.stdout);
+        assert!(script.contains(marker), "{shell} missing {marker}");
+    }
+}
+
+#[test]
+fn complete_out_writes_a_file_instead_of_stdout() {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("_bap");
+    let out = Command::new(BIN)
+        .args(["complete", "zsh", "--out", target.to_str().unwrap()])
+        .output()
+        .expect("spawn bap");
+    assert!(out.status.success());
+    assert!(target.is_file());
+    let contents = std::fs::read_to_string(&target).unwrap();
+    assert!(contents.starts_with("#compdef bap"));
+}

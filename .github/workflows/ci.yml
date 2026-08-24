@@ -59,3 +59,21 @@ jobs:
       - name: 20-iteration smoke benchmark (report-only)
         run: |
           target/release/bap bench bench/ssr/request.mjs --warmup 2 --iterations 20
+
+  docs-freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Regenerate man pages and fail on drift
+        run: |
+          cargo run -q -p bap_cli --example mangen -- /tmp/man-check
+          for page in /tmp/man-check/*.1; do
+            name=$(basename "$page")
+            if ! cmp -s "$page" "docs/man/$name"; then
+              echo "::error::docs/man/$name drifted from the CLI definition"
+              diff "$page" "docs/man/$name" || true
+              exit 1
+            fi
+          done
