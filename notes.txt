@@ -278,3 +278,36 @@ doctor fixture probe, and report compat.
 Process notes: python heredoc patches with assert-guarded replaces only;
 two silent no-op patches cost real debugging time earlier this session.
 Always verify a patch landed (grep the new symbol) before building on it.
+
+## 2026-08-23 — Polish & bug-fix pass (2 commits)
+
+Stress + edge battery against the release binary surfaced five real defects,
+all fixed with regression tests (146 workspace tests green, npm suite green):
+
+1. Large CommonJS sources (>~5-10k statements) crashed with "Maximum call
+   stack size exceeded": new Function's classic-script parser overflows inside
+   module-evaluation frames while V8's module compiler scales fine. CJS
+   wrappers now inline user source into the synthesized ES module itself;
+   runtime require() keeps synchronous evaluation for typical file sizes.
+   V8 stack raised to 6 MiB (configure_v8_defaults), lane threads 16 MiB.
+2. bap.json rejected the documented `moduleFormat` key — serde matched
+   module_format only. rename_all=camelCase; docs and code now agree.
+3. bap doctor counted only the FIRST import per line; multi-import lines
+   undercounted dependencies. Now scans every occurrence.
+4. bap bench panicked on --lanes 0 (divide by zero after clamping only the
+   spawn count, not the options seen by lanes) and printed "lane 0: No such
+   file or directory" for missing targets without naming the path. Both fixed.
+5. REPL BigInt results killed evaluation with "serde_v8 error: unsupported
+   type". eval now serializes bigints as literals ("3n").
+
+Also: inspect proofs on .js/.cjs reports "not applicable" instead of TS2304
+noise; require('NODE:PATH')/require('') get precise messages; cache dir v1->v2
+and ArtifactV1 renamed to match schema reality; README documents infinite
+interval bounds. Probe battery covered empty/BOM/CRLF files, invalid UTF-8,
+directories-as-scripts, unicode/space paths, 200-deep import graphs, 100k-element
+numeric batches (570us), 8-lane x 200 bench (33 ms wall), concurrent fetches,
+unhandled rejections (exit 1), timer throws (exit 1), and trace validity.
+
+Methodology reminders that saved/burned time this pass: PIPESTATUS for exit
+codes through pipes; never trust benchmark numbers until a counter fixture
+proves executions happen; grep-verify every scripted patch before building.
