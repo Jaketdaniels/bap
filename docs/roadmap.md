@@ -10,6 +10,7 @@ through working vertical slices; planned capabilities are not presented as shipp
 | 3 | Proof-carrying numerics | TypeScript loader/cache, numeric core, proof-backed specialization | Complete | [plan](superpowers/plans/2026-08-19-proof-carrying-numerics.md) |
 | 4 | Ecosystem compatibility | CJS loader, node: shims, adoption tooling, compat report | Complete | [plan](superpowers/plans/2026-08-19-bap-phase-4-node-compat-adoption.md) |
 | 5 | Tail latency | Bench harness, lanes/warmup, measured report | Complete | [plan](superpowers/plans/2026-08-19-bap-phase-6-tail-latency.md) |
+| 6 | Package management | npm registry client, node_modules resolution, bap add/install/remove | Complete (MVP: flat resolution) | — |
 | Future | Hybrid V8 + JSC engine | JSC for profile-selected SSR/numeric kernels | Deferred | — |
 
 ## Guiding rules
