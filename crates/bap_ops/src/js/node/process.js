@@ -21,7 +21,7 @@ __bapNodeModules.process = (() => {
         },
       },
       version: "v22.0.0-bap",
-      versions: { node: "22.0.0", bap: "0.1.0" },
+      versions: { node: "22.0.0", bap: "0.2.0" },
       ...Deno.core.ops.op_process_info(),
     };
   }

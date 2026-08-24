@@ -77,7 +77,14 @@ chmod +x "$BIN_DIR/bap"
 log "installed $($BIN_DIR/bap --version) -> $BIN_DIR/bap"
 
 # --- configure --------------------------------------------------------------
-"$BIN_DIR/bap" install "$@"
+# Older releases may predate the setup/install commands; degrade quietly.
+if "$BIN_DIR/bap" help setup >/dev/null 2>&1; then
+    "$BIN_DIR/bap" setup "$@"
+elif "$BIN_DIR/bap" help install >/dev/null 2>&1; then
+    "$BIN_DIR/bap" install "$@"
+else
+    log "note: this bap version has no shell-setup command; skipped"
+fi
 
 case ":$PATH:" in
     *":$BIN_DIR:"*) ;;

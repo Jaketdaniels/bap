@@ -137,7 +137,7 @@ checksum = "be5eb007b7cacc6c660343e96f650fedf4b5a77512399eb952ca6642cf8d13f7"
 
 [[package]]
 name = "bap"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "bap_bench",
@@ -163,7 +163,7 @@ dependencies = [
 
 [[package]]
 name = "bap_bench"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bap_core",
  "bap_metrics",
@@ -177,7 +177,7 @@ dependencies = [
 
 [[package]]
 name = "bap_core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bap_metrics",
  "bap_ops",
@@ -189,7 +189,7 @@ dependencies = [
 
 [[package]]
 name = "bap_math"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "num-bigint",
  "num-rational",
@@ -198,7 +198,7 @@ dependencies = [
 
 [[package]]
 name = "bap_metrics"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "hdrhistogram",
  "serde",
@@ -208,7 +208,7 @@ dependencies = [
 
 [[package]]
 name = "bap_ops"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bap_math",
  "bap_metrics",
@@ -223,7 +223,7 @@ dependencies = [
 
 [[package]]
 name = "bap_pm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "flate2",
@@ -239,7 +239,7 @@ dependencies = [
 
 [[package]]
 name = "bap_ts"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64",
  "deno_ast",
