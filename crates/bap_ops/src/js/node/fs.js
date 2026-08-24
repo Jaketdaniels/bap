@@ -30,7 +30,12 @@ __bapNodeModules.fs = (() => {
 
   function statSync(path) {
     const stat = ops.op_fs_stat_sync(String(path));
-    return { size: stat.size, mtimeMs: stat.modifiedMs, isFile: () => true };
+    return {
+      size: stat.size,
+      mtimeMs: stat.modifiedMs,
+      isDirectory: () => stat.isDir,
+      isFile: () => stat.isFile,
+    };
   }
 
   function readdirSync(path) {

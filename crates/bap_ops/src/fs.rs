@@ -20,12 +20,14 @@ pub struct DirEntry {
     pub is_dir: bool,
 }
 
-/// Size and modification time for a path.
+/// Size, modification time, and type flags for a path.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileStat {
     pub size: u64,
     pub modified_ms: i64,
+    pub is_file: bool,
+    pub is_dir: bool,
 }
 
 /// Maps an `io::Error` to a JS error naming the offending path.
@@ -102,10 +104,13 @@ pub async fn op_fs_stat(
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
+    let is_dir = meta.is_dir();
     record_op_async(&state.borrow(), "fs.stat", started);
     Ok(FileStat {
         size: meta.len(),
         modified_ms,
+        is_file: !is_dir,
+        is_dir,
     })
 }
 
@@ -181,10 +186,13 @@ pub fn op_fs_stat_sync(
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
+    let is_dir = meta.is_dir();
     record_op(state, "fs.statSync", started);
     Ok(FileStat {
         size: meta.len(),
         modified_ms,
+        is_file: !is_dir,
+        is_dir,
     })
 }
 

@@ -214,8 +214,17 @@ impl ModuleLoader for TsModuleLoader {
             return Ok(url);
         }
         if kind != ResolutionKind::MainModule && is_bare_specifier(specifier) {
+            // Installed packages: walk ancestor node_modules directories
+            // from the importing file.
+            if let Some(path) = self.node_modules_target(referrer, specifier) {
+                return deno_core::ModuleSpecifier::from_file_path(path).map_err(|_| {
+                    JsErrorBox::generic(format!(
+                        "bap: package '{specifier}' resolved to an invalid path"
+                    ))
+                });
+            }
             return Err(JsErrorBox::generic(format!(
-                "bap: cannot find module '{specifier}' (npm packages are not supported on Bap yet)"
+                "bap: cannot find module '{specifier}' (is it installed? run `bap add {specifier}`)"
             )));
         }
         self.files.resolve(specifier, referrer, kind)
@@ -252,6 +261,52 @@ impl TsModuleLoader {
         let path = self.aliases.get(specifier)?;
         std::fs::canonicalize(path).ok()
     }
+
+    /// Walks ancestor `node_modules` directories starting at the referrer.
+    /// `specifier` may carry a subpath (`pkg/sub/file.js`); directories fall
+    /// back to their package.json `main`, then `index.js`.
+    fn node_modules_target(&self, referrer: &str, specifier: &str) -> Option<PathBuf> {
+        let referrer_path = ModuleSpecifier::parse(referrer)
+            .ok()
+            .and_then(|url| url.to_file_path().ok())?;
+        let mut directory = referrer_path.parent()?.to_path_buf();
+        loop {
+            let base = directory.join("node_modules").join(specifier);
+            for candidate in [
+                base.clone(),
+                with_extension(&base, "js"),
+                with_extension(&base, "cjs"),
+            ] {
+                if candidate.is_file() {
+                    return std::fs::canonicalize(candidate).ok();
+                }
+            }
+            if base.is_dir() {
+                if let Some(main) = package_main(&base).filter(|main| main.is_file()) {
+                    return std::fs::canonicalize(main).ok();
+                }
+                let index = base.join("index.js");
+                if index.is_file() {
+                    return std::fs::canonicalize(index).ok();
+                }
+            }
+            directory = directory.parent()?.to_path_buf();
+        }
+    }
+}
+
+fn with_extension(path: &Path, extension: &str) -> PathBuf {
+    let mut os = path.as_os_str().to_os_string();
+    os.push(".");
+    os.push(extension);
+    PathBuf::from(os)
+}
+
+fn package_main(package_directory: &Path) -> Option<PathBuf> {
+    let text = std::fs::read_to_string(package_directory.join("package.json")).ok()?;
+    let manifest: serde_json::Value = serde_json::from_str(&text).ok()?;
+    let main = manifest.get("main")?.as_str()?;
+    Some(package_directory.join(main))
 }
 
 fn is_bare_specifier(specifier: &str) -> bool {

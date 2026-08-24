@@ -6,6 +6,10 @@
 mod error;
 
 use bap_metrics::MetricsCollector;
+use std::sync::Mutex;
+
+/// Serializes isolate creation across threads (see with_args_loader_aliases).
+static ISOLATE_INIT_LOCK: Mutex<()> = Mutex::new(());
 use deno_core::{FsModuleLoader, JsRuntime, ModuleLoader, RuntimeOptions};
 use serde_json::Value;
 
@@ -47,11 +51,17 @@ impl BapRuntime {
     ) -> Self {
         let extensions = vec![bap_ops::bap::init(metrics.clone(), args, aliases)];
         let started = std::time::Instant::now();
+        // Concurrent JsRuntime construction on separate threads aborts inside
+        // V8 intermittently; serializing isolate creation is cheap and fixes it.
+        let _guard = ISOLATE_INIT_LOCK
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let runtime = JsRuntime::new(RuntimeOptions {
             module_loader: Some(module_loader),
             extensions,
             ..Default::default()
         });
+        drop(_guard);
         metrics.record_cold_start(started.elapsed());
         Self { runtime }
     }

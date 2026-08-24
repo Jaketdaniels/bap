@@ -128,18 +128,81 @@ pub fn entry(
             format,
             script_args,
         } => bench::bench(file, warmup, iterations, lanes, script_args, trace, format),
+        cli::Command::Install { specs, json } => {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("tokio runtime");
+            let project = std::env::current_dir().unwrap_or_else(|_| ".".into());
+            let outcome = if specs.is_empty() {
+                rt.block_on(async { bap_pm::install_from_manifest(&project).await })
+            } else {
+                rt.block_on(async { bap_pm::add(&project, &specs).await })
+            };
+            report_pm(outcome, json)
+        }
+        cli::Command::Add { specs, json } => {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("tokio runtime");
+            let project = std::env::current_dir().unwrap_or_else(|_| ".".into());
+            let outcome = rt.block_on(async { bap_pm::add(&project, &specs).await });
+            report_pm(outcome, json)
+        }
+        cli::Command::Remove { names } => {
+            let project = std::env::current_dir().unwrap_or_else(|_| ".".into());
+            match bap_pm::remove(&project, &names) {
+                Ok(removed) => {
+                    for name in removed {
+                        println!("{} {}", style::good("removed"), name);
+                    }
+                    0
+                }
+                Err(error) => {
+                    eprintln!("bap: {error:#}");
+                    1
+                }
+            }
+        }
         cli::Command::Doctor { json } => doctor::doctor(json),
         cli::Command::Report { command } => match command {
             cli::ReportCommand::Compat { input } => report::report(input),
         },
         cli::Command::Inspect { command } => inspect::inspect(command),
-        cli::Command::Install {
+        cli::Command::Setup {
             dry_run,
             zshrc,
             json,
-        } => machine::install(dry_run, zshrc, json),
+        } => machine::setup(dry_run, zshrc, json),
         cli::Command::Upgrade { version, dry_run } => upgrade::upgrade(version, dry_run),
         cli::Command::Complete { shell, out } => complete(shell, out),
+    }
+}
+
+/// Prints an install/add outcome table; returns the exit code.
+fn report_pm(outcome: anyhow::Result<Vec<String>>, json: bool) -> i32 {
+    match outcome {
+        Ok(installed) => {
+            if installed.is_empty() {
+                println!("{}", style::dim("nothing to install - already up to date"));
+            } else {
+                for line in &installed {
+                    println!("{} {line}", style::good("installed"));
+                }
+            }
+            if !json {
+                println!(
+                    "{}",
+                    style::dim("packages land in node_modules/ and bap-lock.json")
+                );
+            }
+            0
+        }
+        Err(error) => {
+            eprintln!("bap: {error:#}");
+            1
+        }
     }
 }
 

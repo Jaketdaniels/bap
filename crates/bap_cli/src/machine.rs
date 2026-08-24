@@ -11,8 +11,8 @@ struct Action {
     description: &'static str,
 }
 
-/// Handles `bap install`; returns the process exit code.
-pub fn install(dry_run: bool, zshrc: bool, json_output: bool) -> i32 {
+/// Handles `bap setup`; returns the process exit code.
+pub fn setup(dry_run: bool, zshrc: bool, json_output: bool) -> i32 {
     let home = home_dir();
     let data = data_dir(&home);
     let actions = plan(&home, &data);
@@ -64,9 +64,9 @@ pub fn install(dry_run: bool, zshrc: bool, json_output: bool) -> i32 {
         println!(
             "{}",
             crate::style::bold(if dry_run {
-                "bap install (dry run)"
+                "bap setup (dry run)"
             } else {
-                "bap install"
+                "bap setup"
             })
         );
         for action in &actions {

@@ -111,7 +111,7 @@ fn missing_npm_package_reports_clear_error() {
     assert!(!out.status.success());
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
-        stderr.contains("npm packages are not supported"),
+        stderr.contains("run `bap add lodash`"),
         "stderr was: {stderr}"
     );
 }

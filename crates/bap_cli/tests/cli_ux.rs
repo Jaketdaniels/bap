@@ -229,11 +229,11 @@ fn complete_out_writes_a_file_instead_of_stdout() {
 }
 
 #[test]
-fn install_configures_home_end_to_end() {
+fn setup_configures_home_end_to_end() {
     let sandbox = Sandbox::new("install");
     let out = sandbox
         .command()
-        .args(["install"])
+        .args(["setup"])
         .env("HOME", sandbox.root.path())
         .env_remove("XDG_DATA_HOME")
         .output()
@@ -253,7 +253,7 @@ fn install_configures_home_end_to_end() {
     // Idempotent: a second run succeeds too.
     let again = sandbox
         .command()
-        .args(["install"])
+        .args(["setup"])
         .env("HOME", sandbox.root.path())
         .env_remove("XDG_DATA_HOME")
         .output()

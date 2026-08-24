@@ -101,9 +101,9 @@ pub enum Command {
     },
     /// Configure this machine: completions and man pages
     #[command(
-        after_help = "Examples:\n  bap install             # write completions + man pages, print PATH advice\n  bap install --dry-run   # show what would change"
+        after_help = "Examples:\n  bap setup               # write completions + man pages, print PATH advice\n  bap setup --dry-run     # show what would change"
     )]
-    Install {
+    Setup {
         /// Show what would be written without writing anything.
         #[arg(long)]
         dry_run: bool,
@@ -122,6 +122,30 @@ pub enum Command {
         /// Show what would happen without changing anything.
         #[arg(long)]
         dry_run: bool,
+    },
+    /// Install packages into node_modules (reads package.json with no specs)
+    Install {
+        /// Package specs to add first, e.g. left-pad or left-pad@1.3.0.
+        #[arg(help = "package specs (name or name@range)")]
+        specs: Vec<String>,
+        /// Print machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Add packages to package.json and install them
+    Add {
+        /// Package specs, e.g. left-pad, @scope/pkg@^2.
+        #[arg(required = true)]
+        specs: Vec<String>,
+        /// Print machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Remove packages from package.json and node_modules
+    Remove {
+        /// Package names to remove.
+        #[arg(required = true)]
+        names: Vec<String>,
     },
     /// Diagnose a project's compatibility with Bap
     Doctor {

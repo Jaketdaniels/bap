@@ -21,7 +21,7 @@ bap upgrade          # fetches and swaps in the latest release
 Prefer to do it by hand? Archives live on
 [GitHub Releases](https://github.com/Jaketdaniels/bap/releases)
 (darwin arm64/x64, linux musl-x64 + gnu-arm64, windows msvc), and
-`bap install --dry-run` shows exactly what setup would touch. Releases are cut
+`bap setup --dry-run` shows exactly what setup would touch. Releases are cut
 by pushing a version tag; cargo-dist builds every platform and publishes.
 
 ## Build
@@ -99,8 +99,8 @@ Measured compatibility over the pinned corpus ships via
 
 ## Completions and manual
 
-Already ran `bap install`? You are done — completions and man pages are in
-place. To re-write them after changing shells, run `bap install` again
+Already ran `bap setup`? You are done — completions and man pages are in
+place. To re-write them after changing shells, run `bap setup` again
 (`--dry-run` previews, `--zshrc` also appends an fpath snippet to `~/.zshrc`).
 Man pages are committed under `docs/man` and regenerated with:
 

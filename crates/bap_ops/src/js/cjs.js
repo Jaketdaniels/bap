@@ -51,6 +51,11 @@ function __bapCjsExists(path) {
   return Deno.core.ops.op_fs_exists_sync(path);
 }
 
+function __bapCjsIsFile(path) {
+  return Deno.core.ops.op_fs_exists_sync(path)
+    && !Deno.core.ops.op_fs_stat_sync(path).isDir;
+}
+
 function __bapCjsReadBytes(path) {
   return Deno.core.ops.op_fs_read_file_sync(path);
 }
@@ -58,7 +63,7 @@ function __bapCjsReadBytes(path) {
 function __bapCjsResolveFile(candidate) {
   for (const suffix of ["", ".js", ".cjs", ".json"]) {
     const target = candidate + suffix;
-    if (__bapCjsExists(target)) return target;
+    if (__bapCjsIsFile(target)) return target;
   }
   return null;
 }
@@ -121,12 +126,15 @@ function __bapCjsResolve(request, parentDir) {
     }
     if (__bapNodeModules[name] !== undefined) return { builtin: name };
     if (hadNodePrefix || __bapCjsNodeBuiltins.has(name)) {
-      throw new Error(
-        `bap: node:${name} is not implemented on Bap`,
-      );
+      throw new Error(`bap: node:${name} is not implemented on Bap`);
     }
+
+    // Installed packages: walk ancestor node_modules directories.
+    const found = __bapCjsFindInNodeModules(request, parentDir);
+    if (found) return found;
+
     throw new Error(
-      `bap: cannot find module '${request}' (npm packages are not supported on Bap yet)`,
+      `bap: cannot find module '${request}' (is it installed? run \`bap add ${request}\`)`,
     );
   }
   const base = __bapCjsNormalize(
@@ -138,8 +146,23 @@ function __bapCjsResolve(request, parentDir) {
     })();
 }
 
-function __bapCjsMakeRequire(parentDir) {
-  const require = (request) => {
+// Walks ancestor node_modules directories looking for `request`
+// (`pkg`, `pkg/sub`, with extension and index probing).
+function __bapCjsFindInNodeModules(request, parentDir) {
+  let dir = parentDir;
+  while (true) {
+    const base = `${dir}/node_modules/${request}`;
+    const file = __bapCjsResolveFile(base);
+    if (file) return file;
+    const directory = __bapCjsResolveDirectory(base);
+    if (directory) return directory;
+    if (dir === "/" || dir.length === 0) break;
+    dir = __bapCjsDirname(dir);
+  }
+  return null;
+}
+
+function __bapCjsMakeRequire(parentDir) {  const require = (request) => {
     const resolved = __bapCjsResolve(String(request), parentDir);
     if (typeof resolved === "object") {
       return __bapNodeModules[resolved.builtin];
